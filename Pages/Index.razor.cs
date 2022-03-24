@@ -15,6 +15,8 @@ public partial class Index : ComponentBase, IDisposable
     public TwitchChatService TwChat { get; set; }
     [Inject]
     public EmotesService Emotes { get; set; }
+    [Inject]
+    public NavigationManager NavMgr { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -66,9 +68,12 @@ public partial class Index : ComponentBase, IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
-        var user = await TwApi.GetUserByLogin(Channel);
-        if(user is not null)
-            await Emotes.GetChannelBttv(user.id);
+        if(!string.IsNullOrWhiteSpace(Channel))
+        {
+            var user = await TwApi.GetUserByLogin(Channel);
+            if(user is not null)
+                await Emotes.GetChannelBttv(user.id);
+        }
     }
 
     public void Dispose()

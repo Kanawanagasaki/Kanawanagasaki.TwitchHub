@@ -6,6 +6,12 @@
         Not authenticated
     </div>
 }
+else if(string.IsNullOrWhiteSpace(Channel))
+{
+    <div>
+        You should speciffy channel name in your Query like: @(NavMgr.Uri)?channel=kanawanagasakiyoko
+    </div>
+}
 else
 {
     <div class='root'>
