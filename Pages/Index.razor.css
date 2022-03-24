@@ -1,0 +1,12 @@
+.root {
+    display: flex;
+    justify-content: end;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    width: 382px;
+    margin-right: .5rem;
+}

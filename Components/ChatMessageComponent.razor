@@ -1,0 +1,79 @@
+@if(Message is not null && Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
+{
+    <div class='root' @ref='_ref'>
+        <div class='container'
+            style='@(!string.IsNullOrWhiteSpace(_color)
+                        ? $"box-shadow: 1px 1px 1px {_color};"
+                        : !string.IsNullOrWhiteSpace(Message.Original.ColorHex)
+                        ? $"box-shadow: 1px 1px 1px {Message.Original.ColorHex};"
+                        : "")'>
+            <div class='header'>
+                @if(_user is not null)
+                {
+                    <img class='prof-img' src='@(_user.profile_image_url)' />
+                }
+
+                @foreach(var badge in Message.Original.Badges)
+                {
+                    if(_badges.ContainsKey(badge.Key))
+                    {
+                        <img src="@(_badges[badge.Key])" />
+                    }
+                }
+
+                <span class='display-name'
+                    style='@(!string.IsNullOrWhiteSpace(_color)
+                        ? $"color: {_color}"
+                        : !string.IsNullOrWhiteSpace(Message.Original.ColorHex)
+                        ? $"color: {Message.Original.ColorHex};"
+                        : "")'>
+                    @(Message.Original.DisplayName)
+                </span>
+            </div>
+            <div class='body'>
+
+                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
+                {
+                    <div>
+                        @for(int i = 0; i < _parts.Count; i++)
+                        {
+                            <span>@_parts[i]</span>
+                            @if(i < _emoteUrls.Count)
+                            {
+                                <img class='emote-img' src='@(_emoteUrls[i])' />
+                            }
+                        }
+                    </div>
+                }
+
+                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
+                {
+                    if(Message.CustomContent is string)
+                    {
+                        <div>
+                            <span>
+                                @Message.CustomContent
+                            </span>
+                        </div>
+                    }
+                }
+
+            </div>
+
+            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Image))
+            {
+                <div class='fragment-image'>
+                    <img src='@Message.ImageUrl' />
+                </div>
+            }
+
+            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
+            {
+                if(Message.CustomContent is HtmlPreviewCustomContent htmlPreview)
+                {
+                    <HtmlPreviewComponent Content='@htmlPreview' />
+                }
+            }
+        </div>
+    </div>
+}

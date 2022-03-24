@@ -1,0 +1,19 @@
+﻿@page "/"
+
+@if(!TwAuth.IsAuthenticated)
+{
+    <div>
+        Not authenticated
+    </div>
+}
+else
+{
+    <div class='root'>
+        <div class='container'>
+            @foreach (var message in _messages)
+            {
+                <ChatMessageComponent Message='@message' />
+            }
+        </div>
+    </div>
+}

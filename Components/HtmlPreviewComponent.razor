@@ -1,0 +1,23 @@
+@if(Content is not null)
+{
+    <div class='root'>
+        @if(!string.IsNullOrWhiteSpace(Content.ImageUrl))
+        {
+            <div class='banner' style='background-image: url(@(Content.ImageUrl))' />
+        }
+        <div class='body'>
+            <div class='title'>
+                @Content.Title
+            </div>
+            @if(!string.IsNullOrWhiteSpace(Content.Description))
+            {
+                <div class="description">
+                    @Content.Description
+                </div>
+            }
+            <div class='uri'>
+                @Content.Uri.ToString()
+            </div>
+        </div>
+    </div>
+}
