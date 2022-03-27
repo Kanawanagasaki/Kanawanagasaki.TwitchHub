@@ -77,3 +77,12 @@
         transform: translateX(0%) scaleX(1);
     }
 }
+
+.code-wrapper
+{
+    overflow-x: hidden;
+}
+.code
+{
+    transition: margin-left 5s linear;
+}

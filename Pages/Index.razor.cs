@@ -4,6 +4,7 @@ using Kanawanagasaki.TwitchHub.Components;
 using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using TwitchLib.Client.Models;
 
 public partial class Index : ComponentBase, IDisposable
@@ -31,18 +32,18 @@ public partial class Index : ComponentBase, IDisposable
     {
         TwChat.OnMessage += message =>
         {
-            if(!message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
+            if (!message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
                 return;
 
             _messages.Add(message);
             if (_messages.Count > 20) _messages.RemoveAt(0);
             InvokeAsync(StateHasChanged);
 
-            Task.Run(async () => await InvokeAsync(async() =>
+            Task.Run(async () => await InvokeAsync(async () =>
             {
                 await Task.Delay(TimeSpan.FromMinutes(1));
                 var component = _components.FirstOrDefault(c => c.Message == message);
-                if(component is not null)
+                if (component is not null)
                     await component.AnimateAway();
                 _messages.Remove(message);
                 StateHasChanged();
@@ -61,11 +62,11 @@ public partial class Index : ComponentBase, IDisposable
 
     protected override void OnParametersSet()
     {
-        if(Channel != _channelCache)
+        if (Channel != _channelCache)
         {
-            if(!string.IsNullOrWhiteSpace(Channel))
+            if (!string.IsNullOrWhiteSpace(Channel))
                 TwChat.JoinChannel(Channel);
-            if(!string.IsNullOrWhiteSpace(_channelCache))
+            if (!string.IsNullOrWhiteSpace(_channelCache))
                 TwChat.LeaveChannel(_channelCache);
 
             _channelCache = Channel;
@@ -74,35 +75,35 @@ public partial class Index : ComponentBase, IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
-        if(!string.IsNullOrWhiteSpace(Channel))
+        if (!string.IsNullOrWhiteSpace(Channel))
         {
             var user = await TwApi.GetUserByLogin(Channel);
-            if(user is not null)
+            if (user is not null)
                 await Emotes.GetChannelBttv(user.id);
         }
     }
 
     public void RegisterComponent(ChatMessageComponent component)
     {
-        lock(_components)
+        lock (_components)
         {
-            if(!_components.Contains(component))
+            if (!_components.Contains(component))
                 _components.Add(component);
         }
     }
-    
+
     public void UnregisterComponent(ChatMessageComponent component)
     {
-        lock(_components)
+        lock (_components)
         {
-            if(_components.Contains(component))
+            if (_components.Contains(component))
                 _components.Remove(component);
         }
     }
 
     public void Dispose()
     {
-        if(!string.IsNullOrWhiteSpace(Channel))
+        if (!string.IsNullOrWhiteSpace(Channel))
             TwChat.LeaveChannel(Channel);
     }
 }

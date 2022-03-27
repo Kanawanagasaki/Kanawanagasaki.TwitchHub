@@ -16,6 +16,14 @@ using TwitchLib.Communication.Models;
 
 public class TwitchChatService : BackgroundService
 {
+    private static Dictionary<string, string> LANGUAGE_TO_HIGHLIGHTER = new()
+    {
+        { "cs", "csharp" },
+        { "js", "javascript" },
+        { "ts", "typescript" },
+        { "css", "css" },
+    };
+
     public TwitchClient Client { get; private set; }
     public bool IsConnected => Client is not null && Client.IsConnected;
 
@@ -118,6 +126,7 @@ public class TwitchChatService : BackgroundService
 
         if (!res.IsCommand)
         {
+            #region Checking for url
             var split = ev.ChatMessage.Message.Split(" ");
             foreach (var word in split)
             {
@@ -197,8 +206,23 @@ public class TwitchChatService : BackgroundService
                     continue;
                 }
             }
-        }
+            #endregion
 
+            int backtickIndex = ev.ChatMessage.Message.IndexOf("`");
+            int whitespaceIndex = ev.ChatMessage.Message.IndexOf(" ", backtickIndex + 1);
+            if(backtickIndex >= 0 && whitespaceIndex >= 0 && ev.ChatMessage.Message.Length - backtickIndex >= 5)
+            {
+                var language = ev.ChatMessage.Message.Substring(backtickIndex + 1, whitespaceIndex - backtickIndex - 1);
+                int closingBacktickIndex = ev.ChatMessage.Message.IndexOf("`", backtickIndex + 4);
+                if(LANGUAGE_TO_HIGHLIGHTER.ContainsKey(language) && closingBacktickIndex >= 0)
+                {
+                    var code = ev.ChatMessage.Message.Substring(backtickIndex + 4, closingBacktickIndex - 4 - backtickIndex);
+                    var className = LANGUAGE_TO_HIGHLIGHTER[language];
+                    res = res.WithCode(new CodeContent(code, className));
+                }
+            }
+        }
+        
         if (res.ShouldReply)
             Client.SendMessage(ev.ChatMessage.Channel, res.Reply);
 
@@ -211,3 +235,5 @@ public class TwitchChatService : BackgroundService
         return base.StopAsync(cancellationToken);
     }
 }
+
+// check out this function: `js function A() { return "B"; }` cool right?

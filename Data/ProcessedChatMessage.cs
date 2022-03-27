@@ -73,6 +73,12 @@ public class ProcessedChatMessage
         return this;
     }
 
+    public ProcessedChatMessage WithCode(CodeContent code)
+    {
+        Fragments |= RenderFragments.Code;
+        return this.WithCustomContent(code);
+    }
+
     [Flags]
     public enum RenderFragments
     {
@@ -82,6 +88,7 @@ public class ProcessedChatMessage
         CustomContent = 4,
         Image = 8,
         YoutubeVideo = 16,
-        HtmlPreview = 32
+        HtmlPreview = 32,
+        Code = 64
     }
 }

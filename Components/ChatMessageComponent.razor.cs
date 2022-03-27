@@ -29,7 +29,11 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
     private TwitchGetUsersResponse _user = null;
     private ElementReference? _ref { get; set; }
     private bool _shouldScroll = false;
+    private int _width = 0;
     private int _height = 0;
+
+    private ElementReference? _codeRef { get; set; }
+    private int _codeWidth = 0;
 
     private List<string> _parts = new();
     private List<string> _emoteUrls = new();
@@ -38,6 +42,9 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
     private string _color = "";
     private bool _isAnimAway = false;
+    private bool _isAnimCode = true;
+
+    private System.Timers.Timer _timer = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,6 +58,14 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
             var version = badge.versions.OrderByDescending(v => int.TryParse(v.id, out var id) ? id : 0).First();
             _badges[badge.set_id] = version.image_url_1x;
         }
+
+        _timer.Interval = 10_000;
+        _timer.Elapsed += (obj, ev)=>
+        {
+            _isAnimCode = !_isAnimCode;
+            InvokeAsync(StateHasChanged);
+        };
+        _timer.Start();
     }
 
     protected override async Task OnParametersSetAsync()
@@ -133,13 +148,23 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
         if(_ref is not null)
         {
+            _width = await Js.InvokeAsync<int>("getWidth", _ref);
             _height = await Js.InvokeAsync<int>("getHeight", _ref);
+
+            if(_codeRef is not null)
+            {
+                _codeWidth = await Js.InvokeAsync<int>("getScrollWidth", _codeRef);
+                _codeWidth -= _width - 32;
+            }
             
             if (_shouldScroll)
             {
                 await Js.InvokeVoidAsync("scrollIntoView", _ref);
                 _shouldScroll = false;
             }
+
+            if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code))
+                await Js.InvokeVoidAsync("hljs.highlightAll");
         }
     }
 
