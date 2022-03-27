@@ -40,7 +40,7 @@ public partial class Index : ComponentBase, IDisposable
 
             Task.Run(async () => await InvokeAsync(async() =>
             {
-                await Task.Delay(TimeSpan.FromMinutes(.1));
+                await Task.Delay(TimeSpan.FromMinutes(1));
                 var component = _components.FirstOrDefault(c => c.Message == message);
                 if(component is not null)
                     await component.AnimateAway();
