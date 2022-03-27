@@ -16,10 +16,19 @@ else
 {
     <div class='root'>
         <div class='container'>
-            @foreach (var message in _messages)
-            {
-                <ChatMessageComponent Message='@message' />
-            }
+            <CascadingValue Value='@this'>
+                @for (int i = 0; i < 20; i++)
+                {
+                    int _i = i;
+                    var message = _messages.Count > 20
+                        ? _messages[_messages.Count - 20 + _i]
+                        : _i < _messages.Count
+                            ? _messages[_i]
+                            : null;
+
+                    <ChatMessageComponent Message='@message' Offset='@_i' />
+                }
+            </CascadingValue>
         </div>
     </div>
 }

@@ -1,12 +1,10 @@
 @if(Message is not null && Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
 {
-    <div class='root' @ref='_ref'>
+    <div class='root @(_user is null ? "no-user" : "")'
+         style='@(_isAnimAway ? $"margin-top: {-_height}px; transition: margin-top .3s ease;" : "margin-top: 24px");'
+         @ref='_ref'>
         <div class='container'
-            style='@(!string.IsNullOrWhiteSpace(_color)
-                        ? $"box-shadow: 1px 1px 1px {_color};"
-                        : !string.IsNullOrWhiteSpace(Message.Original.ColorHex)
-                        ? $"box-shadow: 1px 1px 1px {Message.Original.ColorHex};"
-                        : "")'>
+            style='@(!string.IsNullOrWhiteSpace(_color) ? $"box-shadow: 1px 1px 1px {_color};" : "")'>
             <div class='header'>
                 @if(_user is not null)
                 {
@@ -22,11 +20,7 @@
                 }
 
                 <span class='display-name'
-                    style='@(!string.IsNullOrWhiteSpace(_color)
-                        ? $"color: {_color}"
-                        : !string.IsNullOrWhiteSpace(Message.Original.ColorHex)
-                        ? $"color: {Message.Original.ColorHex};"
-                        : "")'>
+                    style='@(!string.IsNullOrWhiteSpace(_color) ? $"color: {_color}" : "")'>
                     @(Message.Original.DisplayName)
                 </span>
             </div>

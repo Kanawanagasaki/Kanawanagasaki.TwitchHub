@@ -6,7 +6,8 @@
 .container {
     display: flex;
     flex-direction: column;
-    gap: .5rem;
     width: 382px;
-    margin-right: .5rem;
+    margin: 0 .5rem .5rem 0;
+    height: 66vh;
+    overflow: scroll;
 }

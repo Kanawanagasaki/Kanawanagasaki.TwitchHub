@@ -1,5 +1,6 @@
 namespace Kanawanagasaki.TwitchHub.Pages;
 
+using Kanawanagasaki.TwitchHub.Components;
 using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
@@ -24,6 +25,7 @@ public partial class Index : ComponentBase, IDisposable
     private string _channelCache = "";
 
     private List<ProcessedChatMessage> _messages = new();
+    private List<ChatMessageComponent> _components = new();
 
     protected override void OnInitialized()
     {
@@ -35,12 +37,16 @@ public partial class Index : ComponentBase, IDisposable
             _messages.Add(message);
             if (_messages.Count > 20) _messages.RemoveAt(0);
             InvokeAsync(StateHasChanged);
-            Task.Run(async ()=>
+
+            Task.Run(async () => await InvokeAsync(async() =>
             {
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                await Task.Delay(TimeSpan.FromMinutes(.1));
+                var component = _components.FirstOrDefault(c => c.Message == message);
+                if(component is not null)
+                    await component.AnimateAway();
                 _messages.Remove(message);
-                await InvokeAsync(StateHasChanged);
-            });
+                StateHasChanged();
+            }));
         };
 
         TwAuth.AuthenticationChange += () => InvokeAsync(StateHasChanged);
@@ -73,6 +79,24 @@ public partial class Index : ComponentBase, IDisposable
             var user = await TwApi.GetUserByLogin(Channel);
             if(user is not null)
                 await Emotes.GetChannelBttv(user.id);
+        }
+    }
+
+    public void RegisterComponent(ChatMessageComponent component)
+    {
+        lock(_components)
+        {
+            if(!_components.Contains(component))
+                _components.Add(component);
+        }
+    }
+    
+    public void UnregisterComponent(ChatMessageComponent component)
+    {
+        lock(_components)
+        {
+            if(_components.Contains(component))
+                _components.Remove(component);
         }
     }
 

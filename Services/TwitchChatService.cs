@@ -72,8 +72,18 @@ public class TwitchChatService : BackgroundService
                 Client.JoinChannel(channel);
             _channelsToJoin.Clear();
         };
-        Client.OnJoinedChannel += (_, ev) => _logger.LogInformation($"Channel {ev.Channel} joined");
-        Client.OnLeftChannel += (_, ev) => _logger.LogInformation($"Channel {ev.Channel} left");
+        Client.OnJoinedChannel += (_, ev) =>
+        {
+            _logger.LogInformation($"Channel {ev.Channel} joined");
+            if(!_channelsToJoin.Contains(ev.Channel))
+                Client.LeaveChannel(ev.Channel);
+        };
+        Client.OnLeftChannel += (_, ev) =>
+        {
+            _logger.LogInformation($"Channel {ev.Channel} left");
+            if(_channelsToJoin.Contains(ev.Channel))
+                Client.JoinChannel(ev.Channel);
+        };
         Client.OnDisconnected += (_, _) => _logger.LogInformation($"Disconnected");
         Client.OnMessageReceived += MessageReceived;
 
@@ -82,13 +92,20 @@ public class TwitchChatService : BackgroundService
 
     public void JoinChannel(string channel)
     {
+        lock(_channelsToJoin)
+            if(!_channelsToJoin.Contains(channel))
+                _channelsToJoin.Add(channel);
+
         if (IsConnected)
             Client.JoinChannel(channel);
-        else _channelsToJoin.Add(channel);
     }
 
     public void LeaveChannel(string channel)
     {
+        lock(_channelsToJoin)
+            if(_channelsToJoin.Contains(channel))
+                _channelsToJoin.Remove(channel);
+        
         if (IsConnected)
             Client.LeaveChannel(channel);
     }
