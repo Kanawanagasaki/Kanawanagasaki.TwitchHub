@@ -61,31 +61,25 @@
                 </div>
             }
 
-            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
+            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && Message.CustomContent is HtmlPreviewCustomContent htmlPreview)
             {
-                if(Message.CustomContent is HtmlPreviewCustomContent htmlPreview)
-                {
-                    <HtmlPreviewComponent Content='@htmlPreview' />
-                }
+                <HtmlPreviewComponent Content='@htmlPreview' />
             }
 
-            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code))
+            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && Message.CustomContent is CodeContent codeContent && !_isAnimAway)
             {
-                if(Message.CustomContent is CodeContent codeContent)
-                {
-                    <div class='code-wrapper'>
-                        <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
-                            <pre>
-                                <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
-                                    foreach(var line in codeContent.Lines)
-                                    {
-                                        @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
-                                    }
-                                }</code>
-                            </pre>
-                        </div>
+                <div class='code-wrapper'>
+                    <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
+                        <pre>
+                            <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
+                                foreach(var line in codeContent.Lines)
+                                {
+                                    @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
+                                }
+                            }</code>
+                        </pre>
                     </div>
-                }
+                </div>
             }
         </div>
     </div>
