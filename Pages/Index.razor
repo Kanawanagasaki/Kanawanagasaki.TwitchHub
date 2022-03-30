@@ -1,42 +1,28 @@
 ﻿@page "/"
 
-@if(!TwAuth.IsAuthenticated)
-{
-    <div>
-        Not authenticated
-    </div>
-}
-else if(string.IsNullOrWhiteSpace(Channel))
-{
-    <div>
-        You should speciffy channel name in your Query like: @(NavMgr.Uri)?channel=kanawanagasakiyoko
-    </div>
-}
-else
-{
-    <div class='root'>
-        <div class='container'>
-            <CascadingValue Value='@this'>
-                @for (int i = 0; i < 20; i++)
-                {
-                    int _i = i;
-                    var message = _messages.Count > 20
-                        ? _messages[_messages.Count - 20 + _i]
-                        : _i < _messages.Count
-                             ? _messages[_i]
-                             : null;
-
-                    <ChatMessageComponent Message='@message' Offset='@_i' />
-                }
-            </CascadingValue>
-        </div>
-
-        @if(_channelObj is not null)
-        {
-            <div class='followers-counter'>
-                <TwitchFollowersCounter ChannelId='@(_channelObj.id)' />
-            </div>
-        }
-    </div>
-}
-
+<div>
+    <h1>
+        Hello, it is Kanawanagasaki.TwitchHub
+    </h1>
+    <p>
+        Components have been moved to their specific pages 
+    </p>
+    @if(TwAuth.IsAuthenticated)
+    {
+        <p>
+            If you want to login with different account click <a href='/auth'>here</a>
+        </p>
+    }
+    else
+    {
+        <p>
+            You not authenticated, click <a href='/auth'>here</a> to authenticate
+        </p>
+    }
+    <p>
+        Chat located <a href='/chat'>here</a>
+    </p>
+    <p>
+        Followers counter is <a href='/followers-counter'>here</a>
+    </p>
+</div>

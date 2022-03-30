@@ -1,0 +1,20 @@
+@page "/followers-counter"
+
+@if(string.IsNullOrWhiteSpace(Channel))
+{
+    <div>
+        You should speciffy channel name in your Query like: @(NavMgr.Uri + (NavMgr.Uri.Contains("?") ? "&" : "?"))channel=kanawanagasakiyoko
+    </div>
+    @if(Goal is null)
+    {
+        <div>
+            You also can add Goal into Query like: @(NavMgr.Uri + (NavMgr.Uri.Contains("?") ? "&" : "?"))goal=9000
+        </div>
+    }
+}
+else if(_channel is not null)
+{
+    <div class='root'>
+        <TwitchFollowersCounter ChannelId='@(_channel.id)' Goal='@Goal' />
+    </div>
+}

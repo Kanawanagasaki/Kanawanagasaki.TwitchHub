@@ -22,11 +22,8 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
     public ProcessedChatMessage Message { get; set; }
     private ProcessedChatMessage _cachedMessage = null;
 
-    [Parameter]
-    public int Offset { get; set; }
-
     [CascadingParameter]
-    public Kanawanagasaki.TwitchHub.Pages.Index Parent { get; set; }
+    public ChatComponent Parent { get; set; }
 
     private TwitchGetUsersResponse _user = null;
     private ElementReference? _ref { get; set; }
@@ -193,12 +190,6 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
         await Task.Delay(300);
     }
 
-    private double GetLuma(string hex)
-    {
-        (var r, var g, var b) = HexToRgb(hex);
-        return Math.Sqrt(0.299 * r * r + 0.587 * g * g + 0.114 * b * b);
-    }
-
     private (byte r, byte g, byte b) HexToRgb(string hex)
     {
         int rgb = int.Parse(hex.Substring(1), System.Globalization.NumberStyles.HexNumber);
@@ -242,6 +233,9 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        _timer.Stop();
+        _timer.Dispose();
+
         if(Parent is not null)
             Parent.UnregisterComponent(this);
     }

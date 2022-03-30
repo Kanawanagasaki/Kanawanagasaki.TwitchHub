@@ -1,0 +1,18 @@
+@page "/chat"
+
+@if(!TwAuth.IsAuthenticated)
+{
+    <div>
+        Not authenticated
+    </div>
+}
+else if(string.IsNullOrWhiteSpace(Channel))
+{
+    <div>
+        You should speciffy channel name in your Query like: @(NavMgr.Uri + (NavMgr.Uri.Contains("?") ? "&" : "?"))channel=kanawanagasakiyoko
+    </div>
+}
+else
+{
+    <ChatComponent Channel="@Channel" />
+}

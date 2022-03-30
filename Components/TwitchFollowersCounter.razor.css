@@ -1,10 +1,30 @@
 .root {
+    display: flex;
+}
+
+.content {
     font-size: 1.5rem;
     text-shadow: 1px 1px 1px black;
     color: white;
 
-    background-color: #9046ff; /*#16825D #1E1E1E;*/
+    background-color: #9046ff;
     border-radius: 4px;
 
     padding: 2px 8px;
+
+    position: relative;
+    z-index: -2;
+}
+
+.progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    background-color: #16825D;
+    border-radius: 4px;
+
+    z-index: -1;
+
+    transition: right .3s ease;
 }

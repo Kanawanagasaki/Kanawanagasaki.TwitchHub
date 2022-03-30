@@ -1,8 +1,8 @@
 namespace Kanawanagasaki.TwitchHub.Services;
 
 using System.Collections.Concurrent;
+using System.Threading;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 public class TwitchApiService
 {

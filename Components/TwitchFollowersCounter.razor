@@ -1,3 +1,8 @@
 <div class='root'>
-    Followers: @(_count) / 50
+    <div class='content'>
+        <span>
+            Followers: @(_count) / @(Goal ?? 9000)
+        </span>
+        <div class='progress-bar' style='right: @(Math.Clamp(100 - (int)((double)_count/(double)(Goal ?? 9000)*100d), 0, 100))%' />
+    </div>
 </div>

@@ -1,5 +1,6 @@
 namespace Kanawanagasaki.TwitchHub.Components;
 
+using System.Threading.Tasks;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
 using TwitchLib.PubSub;
@@ -10,41 +11,39 @@ public partial class TwitchFollowersCounter : ComponentBase
     public TwitchApiService TwApi { get; set; }
     [Inject]
     public TwitchAuthService TwAuth { get; set; }
+    [Inject]
+    public ILogger<TwitchFollowersCounter> Logger { get; set; }
 
     [Parameter]
     public string ChannelId { get; set; }
-
-    private TwitchPubSub _pubSub;
+    [Parameter]
+    public int? Goal { get; set; }
 
     private int _count = 0;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        if (ChannelId is null) return;
-
         TwAuth.AuthenticationChange += () =>
         {
             InvokeAsync(async () =>
             {
-                _count = await TwApi.GetFollowersCount(ChannelId);
+                if(!string.IsNullOrEmpty(ChannelId))
+                    _count = await TwApi.GetFollowersCount(ChannelId);
                 StateHasChanged();
             });
         };
+    }
 
-        var user = await TwApi.GetUser();
-        if (user is null) return;
-
-        _count = await TwApi.GetFollowersCount(ChannelId);
-
-        _pubSub = new TwitchPubSub();
-        _pubSub.OnFollow += (obj, ev) =>
+    protected override async Task OnParametersSetAsync()
+    {
+        while(true)
         {
-            InvokeAsync(async () =>
+            if(!string.IsNullOrEmpty(ChannelId) && TwAuth.IsAuthenticated)
             {
                 _count = await TwApi.GetFollowersCount(ChannelId);
                 StateHasChanged();
-            });
-        };
-        _pubSub.ListenToFollows(user.id.ToString());
+            }
+            await Task.Delay(120_000);
+        }
     }
 }
