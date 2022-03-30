@@ -1,6 +1,8 @@
 .root {
     display: flex;
     justify-content: end;
+    height: 100%;
+    position: relative;
 }
 
 .container {
@@ -10,4 +12,10 @@
     margin: 0 .5rem .5rem 0;
     height: 66vh;
     overflow: scroll;
+}
+
+.followers-counter {
+    position: absolute;
+    left: 51px;
+    bottom: 27px;
 }

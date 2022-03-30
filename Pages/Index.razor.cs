@@ -18,12 +18,17 @@ public partial class Index : ComponentBase, IDisposable
     [Inject]
     public EmotesService Emotes { get; set; }
     [Inject]
+    public IJSRuntime Js { get; set; }
+    [Inject]
     public NavigationManager NavMgr { get; set; }
+    [Inject]
+    public ILogger<Index> Logger { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
     public string Channel { get; set; }
     private string _channelCache = "";
+    private TwitchGetUsersResponse _channelObj;
 
     private List<ProcessedChatMessage> _messages = new();
     private List<ChatMessageComponent> _components = new();
@@ -77,9 +82,10 @@ public partial class Index : ComponentBase, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(Channel))
         {
-            var user = await TwApi.GetUserByLogin(Channel);
-            if (user is not null)
-                await Emotes.GetChannelBttv(user.id);
+            _channelObj = await TwApi.GetUserByLogin(Channel);
+            StateHasChanged();
+            if (_channelObj is not null)
+                await Emotes.GetChannelBttv(_channelObj.id);
         }
     }
 

@@ -123,6 +123,21 @@ public class TwitchApiService
         }
         else return null;
     }
+
+    public async Task<int> GetFollowersCount(string userid)
+    {
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_twAuth.AccessToken}");
+        http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
+        var response = await http.GetAsync("https://api.twitch.tv/helix/users/follows?to_id=" + userid);
+        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            var data = JsonConvert.DeserializeObject<TwitchPaginatedDataResponse<object>>(json);
+            return data.total;
+        }
+        else return -1;
+    }
 }
 
 public record TwitchGetChatBadgeVersionResponse(string id, string image_url_1x, string image_url_2x, string image_url_4x);
@@ -139,4 +154,6 @@ public record TwitchGetUsersResponse(
     string view_count,
     string email,
     string created_at);
+
+public record TwitchPaginatedDataResponse<T>(int total, T[] data);
 public record TwitchDataResponse<T>(T[] data);

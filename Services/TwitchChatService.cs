@@ -78,21 +78,24 @@ public class TwitchChatService : BackgroundService
             _logger.LogInformation("Connected");
             foreach (var channel in _channelsToJoin)
                 Client.JoinChannel(channel);
-            _channelsToJoin.Clear();
         };
         Client.OnJoinedChannel += (_, ev) =>
         {
             _logger.LogInformation($"Channel {ev.Channel} joined");
-            if(!_channelsToJoin.Contains(ev.Channel))
+            if (!_channelsToJoin.Contains(ev.Channel))
                 Client.LeaveChannel(ev.Channel);
         };
         Client.OnLeftChannel += (_, ev) =>
         {
             _logger.LogInformation($"Channel {ev.Channel} left");
-            if(_channelsToJoin.Contains(ev.Channel))
+            if (_channelsToJoin.Contains(ev.Channel))
                 Client.JoinChannel(ev.Channel);
         };
-        Client.OnDisconnected += (_, _) => _logger.LogInformation($"Disconnected");
+        Client.OnDisconnected += (_, _) =>
+        {
+            _logger.LogInformation($"Disconnected");
+            Client.Connect();
+        };
         Client.OnMessageReceived += MessageReceived;
 
         Client.Connect();
@@ -100,8 +103,8 @@ public class TwitchChatService : BackgroundService
 
     public void JoinChannel(string channel)
     {
-        lock(_channelsToJoin)
-            if(!_channelsToJoin.Contains(channel))
+        lock (_channelsToJoin)
+            if (!_channelsToJoin.Contains(channel))
                 _channelsToJoin.Add(channel);
 
         if (IsConnected)
@@ -110,10 +113,10 @@ public class TwitchChatService : BackgroundService
 
     public void LeaveChannel(string channel)
     {
-        lock(_channelsToJoin)
-            if(_channelsToJoin.Contains(channel))
+        lock (_channelsToJoin)
+            if (_channelsToJoin.Contains(channel))
                 _channelsToJoin.Remove(channel);
-        
+
         if (IsConnected)
             Client.LeaveChannel(channel);
     }
@@ -200,7 +203,7 @@ public class TwitchChatService : BackgroundService
                         }
                     }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     _logger.LogError("Failed to load preview for url, " + e.Message);
                     continue;
@@ -210,11 +213,11 @@ public class TwitchChatService : BackgroundService
 
             int backtickIndex = ev.ChatMessage.Message.IndexOf("`");
             int whitespaceIndex = ev.ChatMessage.Message.IndexOf(" ", backtickIndex + 1);
-            if(backtickIndex >= 0 && whitespaceIndex >= 0 && ev.ChatMessage.Message.Length - backtickIndex >= 5)
+            if (backtickIndex >= 0 && whitespaceIndex >= 0 && ev.ChatMessage.Message.Length - backtickIndex >= 5)
             {
                 var language = ev.ChatMessage.Message.Substring(backtickIndex + 1, whitespaceIndex - backtickIndex - 1);
                 int closingBacktickIndex = ev.ChatMessage.Message.IndexOf("`", backtickIndex + 4);
-                if(LANGUAGE_TO_HIGHLIGHTER.ContainsKey(language) && closingBacktickIndex >= 0)
+                if (LANGUAGE_TO_HIGHLIGHTER.ContainsKey(language) && closingBacktickIndex >= 0)
                 {
                     var code = ev.ChatMessage.Message.Substring(backtickIndex + 4, closingBacktickIndex - 4 - backtickIndex);
                     var className = LANGUAGE_TO_HIGHLIGHTER[language];
@@ -222,7 +225,7 @@ public class TwitchChatService : BackgroundService
                 }
             }
         }
-        
+
         if (res.ShouldReply)
             Client.SendMessage(ev.ChatMessage.Channel, res.Reply);
 
@@ -235,5 +238,3 @@ public class TwitchChatService : BackgroundService
         return base.StopAsync(cancellationToken);
     }
 }
-
-// check out this function: `js function A() { return "B"; }` cool right?

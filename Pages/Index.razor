@@ -23,13 +23,20 @@ else
                     var message = _messages.Count > 20
                         ? _messages[_messages.Count - 20 + _i]
                         : _i < _messages.Count
-                            ? _messages[_i]
-                            : null;
+                             ? _messages[_i]
+                             : null;
 
                     <ChatMessageComponent Message='@message' Offset='@_i' />
                 }
             </CascadingValue>
         </div>
+
+        @if(_channelObj is not null)
+        {
+            <div class='followers-counter'>
+                <TwitchFollowersCounter ChannelId='@(_channelObj.id)' />
+            </div>
+        }
     </div>
 }
 

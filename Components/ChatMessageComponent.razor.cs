@@ -15,6 +15,8 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
     public EmotesService Emotes { get; set; }
     [Inject]
     public IJSRuntime Js { get; set; }
+    [Inject]
+    public ILogger<ChatMessageComponent> Logger { get; set; }
 
     [Parameter]
     public ProcessedChatMessage Message { get; set; }
@@ -34,6 +36,9 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
     private ElementReference? _codeRef { get; set; }
     private int _codeWidth = 0;
+    private bool _isAnimCode = true;
+    private bool _shouldRehighlight = false;
+    private bool _isCodeHidden = false;
 
     private List<string> _parts = new();
     private List<string> _emoteUrls = new();
@@ -42,7 +47,6 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
     private string _color = "";
     private bool _isAnimAway = false;
-    private bool _isAnimCode = true;
 
     private System.Timers.Timer _timer = new();
 
@@ -74,7 +78,9 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
         if (Message is not null)
         {
+            _isCodeHidden = true;
             _isAnimAway = false;
+            _codeWidth = 0;
 
             #region Increasing brightness of user's colors
             if (!string.IsNullOrWhiteSpace(Message.Original.ColorHex))
@@ -135,6 +141,13 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
             #endregion
 
             _user = await TwApi.GetUser(Message.Original.UserId);
+
+            if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code))
+            {
+                _shouldRehighlight = true;
+                await Task.Delay(1);
+                _isCodeHidden = false;
+            }
         }
 
         _cachedMessage = Message;
@@ -154,7 +167,15 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
             if(_codeRef is not null)
             {
                 _codeWidth = await Js.InvokeAsync<int>("getScrollWidth", _codeRef);
-                _codeWidth -= _width - 32;
+                if(_codeWidth < _width)
+                    _codeWidth = 0;
+                else  _codeWidth -= _width - 32;
+
+                if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && _shouldRehighlight && !_isCodeHidden)
+                {
+                    await Js.InvokeVoidAsync("hljs.highlightElement", _codeRef);
+                    _shouldRehighlight = false;
+                }
             }
             
             if (_shouldScroll)
@@ -162,9 +183,6 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
                 await Js.InvokeVoidAsync("scrollIntoView", _ref);
                 _shouldScroll = false;
             }
-
-            if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code))
-                await Js.InvokeVoidAsync("hljs.highlightAll");
         }
     }
 
