@@ -15,13 +15,14 @@ public class CommandsService
     private Dictionary<string, string> _textCommands = new();
     public IReadOnlyDictionary<string, string> TextCommands => _textCommands;
 
-    public CommandsService()
+    public CommandsService(JavaScriptService js)
     {
         RegisterCommand(new DiceCommand());
         RegisterCommand(new CommandsCommand(this));
         RegisterCommand(new HelpCommand(this));
         RegisterCommand(new AddCommandCommand(this));
         RegisterCommand(new RemoveCommandCommand(this));
+        RegisterCommand(new JsCommand(js));
 
         _externalCommands.Add("drop", "Drop from the sky!");
 

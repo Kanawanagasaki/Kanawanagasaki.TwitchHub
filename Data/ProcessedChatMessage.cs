@@ -13,7 +13,7 @@ public class ProcessedChatMessage
     public bool ShouldReply { get; private set; } = false;
     public string Reply { get; private set; }
 
-    public object CustomContent { get; private set; }
+    public List<object> CustomContent { get; private set; } = new();
 
     public string ImageUrl { get; private set; }
 
@@ -47,7 +47,7 @@ public class ProcessedChatMessage
 
     public ProcessedChatMessage WithCustomContent(object content)
     {
-        CustomContent = content;
+        CustomContent.Add(content);
         Fragments |= RenderFragments.CustomContent;
         return this;
     }

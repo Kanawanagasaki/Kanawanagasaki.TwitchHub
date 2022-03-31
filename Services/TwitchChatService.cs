@@ -40,14 +40,21 @@ public class TwitchChatService : BackgroundService
     private ILogger<TwitchChatService> _logger;
     private List<string> _channelsToJoin = new();
     private IServiceScopeFactory _serviceFactory;
+    private JavaScriptService _js;
 
-    public TwitchChatService(TwitchAuthService twAuth, TwitchApiService twApi, CommandsService commands, ILogger<TwitchChatService> logger, IServiceScopeFactory serviceFactory)
+    public TwitchChatService(TwitchAuthService twAuth,
+        TwitchApiService twApi,
+        CommandsService commands,
+        ILogger<TwitchChatService> logger,
+        IServiceScopeFactory serviceFactory,
+        JavaScriptService js)
     {
         _twAuth = twAuth;
         _twApi = twApi;
         _commands = commands;
         _logger = logger;
         _serviceFactory = serviceFactory;
+        _js = js;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -114,6 +121,8 @@ public class TwitchChatService : BackgroundService
             if (!_channelsToJoin.Contains(channel))
                 _channelsToJoin.Add(channel);
 
+        _js.CreateEngine(channel);
+
         if (IsConnected)
             Client.JoinChannel(channel);
     }
@@ -123,6 +132,8 @@ public class TwitchChatService : BackgroundService
         lock (_channelsToJoin)
             if (_channelsToJoin.Contains(channel))
                 _channelsToJoin.Remove(channel);
+
+        _js.DisposeEngine(channel);
 
         if (IsConnected)
             Client.LeaveChannel(channel);

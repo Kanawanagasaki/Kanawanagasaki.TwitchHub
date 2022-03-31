@@ -35,7 +35,7 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
     private int _codeWidth = 0;
     private bool _isAnimCode = true;
     private bool _shouldRehighlight = false;
-    private bool _isCodeHidden = false;
+    private bool _codeFlag = false;
 
     private List<string> _parts = new();
     private List<string> _emoteUrls = new();
@@ -75,7 +75,6 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
         if (Message is not null)
         {
-            _isCodeHidden = true;
             _isAnimAway = false;
             _codeWidth = 0;
 
@@ -141,12 +140,16 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
             if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code))
             {
-                if(Message.CustomContent is CodeContent codeContent)
-                    await codeContent.Format(Js);
+                foreach(var customContent in Message.CustomContent)
+                {
+                    if(customContent is CodeContent codeContent && !codeContent.IsFormatted)
+                    {
+                        await codeContent.Format(Js);
+                    }
+                }
 
+                _codeFlag = !_codeFlag;
                 _shouldRehighlight = true;
-                await Task.Delay(1);
-                _isCodeHidden = false;
             }
         }
 
@@ -171,7 +174,7 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
                     _codeWidth = 0;
                 else  _codeWidth -= _width - 32;
 
-                if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && _shouldRehighlight && !_isCodeHidden)
+                if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && _shouldRehighlight)
                 {
                     await Js.InvokeVoidAsync("hljs.highlightElement", _codeRef);
                     _shouldRehighlight = false;

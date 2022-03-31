@@ -7,9 +7,11 @@ namespace Kanawanagasaki.TwitchHub.Data;
 
 public class CodeContent
 {
-    public (string code, string name, string slug) Language {get;private set;}
-    public string Code {get;private set;}
+    public (string code, string name, string slug) Language { get; private set; }
+    public string Code { get; private set; }
     public CSLine[] Lines { get; private set; }
+
+    public bool IsFormatted => Lines is not null;
 
     public string HighlighterClass => $"language-{Language.slug}";
 
@@ -22,10 +24,10 @@ public class CodeContent
     public async Task Format(IJSRuntime js)
     {
         Lines = await Prettier(js);
-        if(Lines is not null) return;
+        if (Lines is not null) return;
 
         Lines = await FormatterOrg();
-        if(Lines is not null) return;
+        if (Lines is not null) return;
 
         Lines = DefaultFormatter();
     }
@@ -33,11 +35,11 @@ public class CodeContent
     private async Task<CSLine[]> Prettier(IJSRuntime js)
     {
         string[] availableLanguages = new[] { "typescript", "css", "json", "html" };
-        if(!availableLanguages.Contains(Language.slug)) return null;
+        if (!availableLanguages.Contains(Language.slug)) return null;
 
         var result = await js.InvokeAsync<string>("prettierFormat", Language.slug, Code);
-        if(string.IsNullOrWhiteSpace(result)) return null;
-        
+        if (string.IsNullOrWhiteSpace(result)) return null;
+
         var lines = result.Trim().Split("\n");
         return lines.Select(l => new CSLine(l.Trim()) { Indent = l.TakeWhile(Char.IsWhiteSpace).Count() }).ToArray();
     }
@@ -45,7 +47,7 @@ public class CodeContent
     private async Task<CSLine[]> FormatterOrg()
     {
         string[] availableLanguages = new[] { "cpp", "java", "csharp", "objective-c", "javascript", "protobuf" };
-        if(!availableLanguages.Contains(Language.slug)) return null;
+        if (!availableLanguages.Contains(Language.slug)) return null;
 
         Dictionary<string, string> langToStyle = new()
         {
@@ -69,7 +71,7 @@ public class CodeContent
         using var form = new StringContent(JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json");
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
         var response = await http.PostAsync("https://formatter.org/admin/format", form);
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             var result = JsonConvert.DeserializeObject<JObject>(json);

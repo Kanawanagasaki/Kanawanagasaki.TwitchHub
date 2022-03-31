@@ -3,14 +3,14 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:5678"
+      "applicationUrl": "http://localhost:5432"
     }
   },
   "profiles": {
     "Kanawanagasaki.TwitchHub": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5678",
+      "applicationUrl": "http://localhost:5432",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

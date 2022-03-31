@@ -86,3 +86,17 @@
 {
     transition: margin-left 5s linear;
 }
+
+.output
+{
+    padding: 0 .5rem .5rem .5rem;
+}
+
+.output-data
+{
+    background-color: #1E1E1E;
+    color: white;
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 4px;
+}

@@ -24,35 +24,43 @@
                     @(Message.Original.DisplayName)
                 </span>
             </div>
-            <div class='body'>
 
-                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
-                {
-                    <div>
-                        @for(int i = 0; i < _parts.Count; i++)
-                        {
-                            <span>@_parts[i]</span>
-                            @if(i < _emoteUrls.Count)
-                            {
-                                <img class='emote-img' src='@(_emoteUrls[i])' />
-                            }
-                        }
-                    </div>
-                }
+            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage) ||
+                (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && Message.CustomContent.Any(c => c is string)))
+            {
+                <div class='body'>
 
-                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
-                {
-                    if(Message.CustomContent is string)
+                    @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
                     {
                         <div>
-                            <span>
-                                @Message.CustomContent
-                            </span>
+                            @for(int i = 0; i < _parts.Count; i++)
+                            {
+                                <span>@_parts[i]</span>
+                                @if(i < _emoteUrls.Count)
+                                {
+                                    <img class='emote-img' src='@(_emoteUrls[i])' />
+                                }
+                            }
                         </div>
                     }
-                }
 
-            </div>
+                    @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
+                    {
+                        foreach(var customContent in Message.CustomContent)
+                        {
+                            if(customContent is string)
+                            {
+                                <div>
+                                    <span>
+                                        @customContent
+                                    </span>
+                                </div>
+                            }
+                        }
+                    }
+
+                </div>
+            }
 
             @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Image))
             {
@@ -61,25 +69,51 @@
                 </div>
             }
 
-            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && Message.CustomContent is HtmlPreviewCustomContent htmlPreview)
+            @foreach (var customContent in Message.CustomContent)
             {
-                <HtmlPreviewComponent Content='@htmlPreview' />
-            }
+                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && customContent is HtmlPreviewCustomContent htmlPreview)
+                {
+                    <HtmlPreviewComponent Content='@htmlPreview' />
+                }
 
-            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && Message.CustomContent is CodeContent codeContent && !_isCodeHidden)
-            {
-                <div class='code-wrapper'>
-                    <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
-                        <pre>
-                            <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
-                                foreach(var line in codeContent.Lines)
-                                {
-                                    @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
-                                }
-                            }</code>
-                        </pre>
+                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && customContent is CodeContent codeContent && codeContent.IsFormatted)
+                {
+                    <div class='code-wrapper'>
+                        @if(_codeFlag)
+                        {
+                            <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
+                                <pre>
+                                    <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
+                                        foreach(var line in codeContent.Lines)
+                                        {
+                                            @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
+                                        }
+                                    }</code>
+                                </pre>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
+                                <pre>
+                                    <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
+                                        foreach(var line in codeContent.Lines)
+                                        {
+                                            @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
+                                        }
+                                    }</code>
+                                </pre>
+                            </div>
+                        }
                     </div>
-                </div>
+                }
+
+                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && customContent is OutputContent output)
+                {
+                    <div class='output'>
+                        Output: <div class='output-data'>@output.Output</div>
+                    </div>
+                }
             }
         </div>
     </div>

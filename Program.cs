@@ -1,4 +1,10 @@
+using System.Globalization;
 using Kanawanagasaki.TwitchHub.Services;
+
+CultureInfo ci = new CultureInfo("ja-JP");
+CultureInfo.DefaultThreadCurrentCulture = ci;
+Thread.CurrentThread.CurrentCulture = ci;
+Thread.CurrentThread.CurrentUICulture = ci;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +16,7 @@ builder.Services.AddSingleton<EmotesService>();
 builder.Services.AddSingleton<TwitchAuthService>();
 builder.Services.AddSingleton<TwitchApiService>();
 builder.Services.AddSingleton<TwitchChatService>();
+builder.Services.AddSingleton<JavaScriptService>();
 
 builder.Services.AddHostedService(sp => sp.GetService<TwitchAuthService>());
 builder.Services.AddHostedService(sp => sp.GetService<TwitchChatService>());
