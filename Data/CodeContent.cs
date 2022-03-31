@@ -1,15 +1,89 @@
+using System.Text;
+using Microsoft.JSInterop;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 namespace Kanawanagasaki.TwitchHub.Data;
 
 public class CodeContent
 {
-    public string HighlighterClass = "";
+    public (string code, string name, string slug) Language {get;private set;}
+    public string Code {get;private set;}
     public CSLine[] Lines { get; private set; }
 
-    public CodeContent(string code, string language)
-    {
-        HighlighterClass = $"language-{language}";
+    public string HighlighterClass => $"language-{Language.slug}";
 
-        var lines = code
+    public CodeContent(string code, (string code, string name, string slug) lang)
+    {
+        Code = code;
+        Language = lang;
+    }
+
+    public async Task Format(IJSRuntime js)
+    {
+        Lines = await Prettier(js);
+        if(Lines is not null) return;
+
+        Lines = await FormatterOrg();
+        if(Lines is not null) return;
+
+        Lines = DefaultFormatter();
+    }
+
+    private async Task<CSLine[]> Prettier(IJSRuntime js)
+    {
+        string[] availableLanguages = new[] { "typescript", "css", "json", "html" };
+        if(!availableLanguages.Contains(Language.slug)) return null;
+
+        var result = await js.InvokeAsync<string>("prettierFormat", Language.slug, Code);
+        if(string.IsNullOrWhiteSpace(result)) return null;
+        
+        var lines = result.Trim().Split("\n");
+        return lines.Select(l => new CSLine(l.Trim()) { Indent = l.TakeWhile(Char.IsWhiteSpace).Count() }).ToArray();
+    }
+
+    private async Task<CSLine[]> FormatterOrg()
+    {
+        string[] availableLanguages = new[] { "cpp", "java", "csharp", "objective-c", "javascript", "protobuf" };
+        if(!availableLanguages.Contains(Language.slug)) return null;
+
+        Dictionary<string, string> langToStyle = new()
+        {
+            { "cpp", "Google" },
+            { "java", "Mozilla" },
+            { "csharp", "Mozilla" },
+            { "objective-c", "Mozilla" },
+            { "javascript", "Mozilla" },
+            { "protobuf", "Mozilla" }
+        };
+
+        Dictionary<string, string> data = new()
+        {
+            { "language", Language.slug },
+            { "codeSrc", Code },
+            { "style", langToStyle[Language.slug] },
+            { "indentWidth", "1" },
+            { "columnLimit", "160" }
+        };
+
+        using var form = new StringContent(JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json");
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        var response = await http.PostAsync("https://formatter.org/admin/format", form);
+        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<JObject>(json);
+            var parsedCode = result.Value<string>("codeDst");
+            var lines = parsedCode.Split("\n");
+            return lines.Select(l => new CSLine(l.Trim()) { Indent = l.TakeWhile(Char.IsWhiteSpace).Count() }).ToArray();
+        }
+
+        return null;
+    }
+
+    private CSLine[] DefaultFormatter()
+    {
+        var lines = Code
             .Replace("{", "\n{\n")
             .Replace("}", "\n}\n")
             .Replace(";", ";\n")
@@ -40,7 +114,7 @@ public class CodeContent
             }
         }
 
-        Lines = lines.ToArray();
+        return lines.ToArray();
     }
 }
 

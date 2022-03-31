@@ -13,15 +13,20 @@ using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
+using Microsoft.JSInterop;
 
 public class TwitchChatService : BackgroundService
 {
-    private static Dictionary<string, string> LANGUAGE_TO_HIGHLIGHTER = new()
+    private static Dictionary<string, (string code, string name, string slug)> CODE_LANGUAGES = new()
     {
-        { "cs", "csharp" },
-        { "js", "javascript" },
-        { "ts", "typescript" },
-        { "css", "css" },
+        { "cs", ("cs", "c#", "csharp") },
+        { "js", ("js", "javascript", "javascript") },
+        { "ts", ("ts", "typescript", "typescript") },
+        { "css", ("css", "css", "css") },
+        { "html", ("html", "html", "html") },
+        { "json", ("json", "json", "json") },
+        { "java", ("java", "java", "java") },
+        { "cpp", ("cpp", "c++", "cpp") }
     };
 
     public TwitchClient Client { get; private set; }
@@ -34,13 +39,15 @@ public class TwitchChatService : BackgroundService
     private CommandsService _commands;
     private ILogger<TwitchChatService> _logger;
     private List<string> _channelsToJoin = new();
+    private IServiceScopeFactory _serviceFactory;
 
-    public TwitchChatService(TwitchAuthService twAuth, TwitchApiService twApi, CommandsService commands, ILogger<TwitchChatService> logger)
+    public TwitchChatService(TwitchAuthService twAuth, TwitchApiService twApi, CommandsService commands, ILogger<TwitchChatService> logger, IServiceScopeFactory serviceFactory)
     {
         _twAuth = twAuth;
         _twApi = twApi;
         _commands = commands;
         _logger = logger;
+        _serviceFactory = serviceFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -216,12 +223,13 @@ public class TwitchChatService : BackgroundService
             if (backtickIndex >= 0 && whitespaceIndex >= 0 && ev.ChatMessage.Message.Length - backtickIndex >= 5)
             {
                 var language = ev.ChatMessage.Message.Substring(backtickIndex + 1, whitespaceIndex - backtickIndex - 1);
-                int closingBacktickIndex = ev.ChatMessage.Message.IndexOf("`", backtickIndex + 4);
-                if (LANGUAGE_TO_HIGHLIGHTER.ContainsKey(language) && closingBacktickIndex >= 0)
+                int closingBacktickIndex = ev.ChatMessage.Message.IndexOf("`", backtickIndex + language.Length);
+                if (CODE_LANGUAGES.ContainsKey(language) && closingBacktickIndex >= 0)
                 {
-                    var code = ev.ChatMessage.Message.Substring(backtickIndex + 4, closingBacktickIndex - 4 - backtickIndex);
-                    var className = LANGUAGE_TO_HIGHLIGHTER[language];
-                    res = res.WithCode(new CodeContent(code, className));
+                    var code = ev.ChatMessage.Message.Substring(backtickIndex + language.Length + 2, closingBacktickIndex - language.Length - 2 - backtickIndex);
+                    var className = CODE_LANGUAGES[language];
+                    var content = new CodeContent(code, className);
+                    res = res.WithCode(content);
                 }
             }
         }

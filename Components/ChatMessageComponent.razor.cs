@@ -141,6 +141,9 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
 
             if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code))
             {
+                if(Message.CustomContent is CodeContent codeContent)
+                    await codeContent.Format(Js);
+
                 _shouldRehighlight = true;
                 await Task.Delay(1);
                 _isCodeHidden = false;
