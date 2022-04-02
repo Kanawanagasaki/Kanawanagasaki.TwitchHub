@@ -29,3 +29,31 @@ function prettierFormat(lang, code) {
         return null;
     }
 }
+
+function createLoopObj(instance)
+{
+    if(instance)
+    {
+        return {
+            instance: instance,
+            isRunnig: false,
+            start: function()
+            {
+                this.isRunnig = true;
+                this.loop();
+            },
+            loop: async function()
+            {
+                await this.instance.invokeMethodAsync("onTick");
+                if(this.isRunnig)
+                {
+                    requestAnimationFrame(() => this.loop());
+                }
+            },
+            stop: function()
+            {
+                this.isRunnig = false;
+            }
+        };
+    }
+}

@@ -1,0 +1,1 @@
+{"initCode":"(obj) => {\r\n    obj.bg = '#1e1e1e';\r\n    for (let i = 0; i < obj.symbols.length; i++) {\r\n        let l = obj.symbols[i];\r\n        l.size = 72;\r\n        l.x = (-(obj.symbols.length * 36) / 2 + 18) + i * 36;\r\n    }\r\n}","tickCode":"(obj, tick) => obj.bg = `#008000`"}
