@@ -1,26 +1,26 @@
 @if(Message is not null && Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
 {
-    <div class='root @(_user is null ? "no-user" : "")'
+    <div class='root @(Message.Sender is null ? "no-user" : "")'
          style='@(_isAnimAway ? $"margin-top: {-_height}px; transition: margin-top .3s ease;" : "margin-top: 24px");'
          @ref='_ref'>
-        <div class='container'
-            style='@(!string.IsNullOrWhiteSpace(_color) ? $"box-shadow: 1px 1px 1px {_color};" : "")'>
+        <div class='container @(_animateNew ? "new" : "")'
+            style='@(!string.IsNullOrWhiteSpace(Message.Color) ? $"box-shadow: 1px 1px 1px {Message.Color};" : "")'>
             <div class='header'>
-                @if(_user is not null)
+                @if(Message.Sender is not null)
                 {
-                    <img class='prof-img' src='@(_user.profile_image_url)' />
+                    <img class='prof-img' src='@(Message.Sender.profile_image_url)' />
                 }
 
                 @foreach(var badge in Message.Original.Badges)
                 {
-                    if(_badges.ContainsKey(badge.Key))
+                    if(Parent.Badges.ContainsKey(badge.Key))
                     {
-                        <img src="@(_badges[badge.Key])" />
+                        <img src="@(Parent.Badges[badge.Key])" />
                     }
                 }
 
                 <span class='display-name'
-                    style='@(!string.IsNullOrWhiteSpace(_color) ? $"color: {_color}" : "")'>
+                    style='@(!string.IsNullOrWhiteSpace(Message.Color) ? $"color: {Message.Color}" : "")'>
                     @(Message.Original.DisplayName)
                 </span>
             </div>
@@ -33,12 +33,15 @@
                     @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
                     {
                         <div>
-                            @for(int i = 0; i < _parts.Count; i++)
+                            @foreach(var el in Message.ParsedMessage)
                             {
-                                <span>@_parts[i]</span>
-                                @if(i < _emoteUrls.Count)
+                                if(!el.IsEmote)
                                 {
-                                    <img class='emote-img' src='@(_emoteUrls[i])' />
+                                    <span>@(el.Content)</span>
+                                }
+                                else
+                                {
+                                    <img class='emote-img' src='@(el.Content)' />
                                 }
                             }
                         </div>

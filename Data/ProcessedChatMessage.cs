@@ -1,11 +1,14 @@
 namespace Kanawanagasaki.TwitchHub.Data;
 
+using Kanawanagasaki.TwitchHub.Services;
 using TwitchLib.Client.Models;
 
 public class ProcessedChatMessage
 {
     public ChatMessage Original { get; private set; }
     public RenderFragments Fragments { get; private set; }
+
+    public List<(bool IsEmote, string Content)> ParsedMessage { get; private set; } = new();
 
     public bool IsCommand { get; private set; } = false;
     public string CommandName { get; private set; }
@@ -18,6 +21,9 @@ public class ProcessedChatMessage
     public string ImageUrl { get; private set; }
 
     public string YoutubeVideoId { get; private set; }
+
+    public TwitchGetUsersResponse Sender { get; private set; }
+    public string Color { get; private set; } = null;
 
     public ProcessedChatMessage(ChatMessage originalMessage)
     {
@@ -77,6 +83,59 @@ public class ProcessedChatMessage
     {
         Fragments |= RenderFragments.Code;
         return this.WithCustomContent(code);
+    }
+
+    public void SetColor(string color)
+    {
+        Color = color;
+    }
+
+    public void SetUser(TwitchGetUsersResponse user)
+    {
+        Sender = user;
+    }
+
+    public void ParseEmotes(BttvEmote[] allBttv)
+    {
+        var parts = new List<string>();
+        var emoteUrls = new List<string>();
+
+        int lastIndex = 0;
+        foreach (var emote in Original.EmoteSet.Emotes.OrderBy(e => e.StartIndex))
+        {
+            parts.Add(Original.Message.Substring(lastIndex, emote.StartIndex - lastIndex));
+            emoteUrls.Add($"https://static-cdn.jtvnw.net/emoticons/v2/{emote.Id}/default/dark/1.0");
+            lastIndex = emote.EndIndex + 1;
+        }
+        parts.Add(Original.Message.Substring(lastIndex));
+
+        for (int i = 0; i < parts.Count; i++)
+        {
+            var split = parts[i].Split(" ");
+            for (int j = 0; j < split.Length; j++)
+            {
+                var bttv = allBttv.FirstOrDefault(b => b.code == split[j]);
+                if (bttv is null) continue;
+
+                parts[i] = string.Join(" ", split.Take(j)) + " ";
+                parts.Insert(i + 1, string.Join(" ", split.Skip(j + 1)));
+
+                emoteUrls.Insert(i, $"https://cdn.betterttv.net/emote/{bttv.id}/2x");
+
+                i--;
+                break;
+            }
+        }
+
+        ParsedMessage.Clear();
+        for(int i = 0; i < parts.Count; i++)
+        {
+            ParsedMessage.Add((false, parts[i]));
+            if(i < emoteUrls.Count)
+            {
+                ParsedMessage.Add((true, emoteUrls[i]));
+            }
+        }
     }
 
     [Flags]

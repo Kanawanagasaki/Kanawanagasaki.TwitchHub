@@ -11,6 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
+builder.Services.AddScoped<HelperService>();
+
 builder.Services.AddSingleton<CommandsService>();
 builder.Services.AddSingleton<EmotesService>();
 builder.Services.AddSingleton<TwitchAuthService>();
@@ -18,6 +20,7 @@ builder.Services.AddSingleton<TwitchApiService>();
 builder.Services.AddSingleton<TwitchChatService>();
 builder.Services.AddSingleton<JavaScriptService>();
 
+builder.Services.AddHostedService(sp => sp.GetService<EmotesService>());
 builder.Services.AddHostedService(sp => sp.GetService<TwitchAuthService>());
 builder.Services.AddHostedService(sp => sp.GetService<TwitchChatService>());
 

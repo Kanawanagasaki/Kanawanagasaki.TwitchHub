@@ -12,6 +12,9 @@
     border-radius: 8px;
     text-shadow: 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000, -1px 0 0 #000;
     box-shadow: 1px 1px 1px #c700c7;
+}
+
+.new {
     animation: .3s forwards anim-start ease;
 }
 

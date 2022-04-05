@@ -1,0 +1,11 @@
+.root
+{
+    height: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.beacon
+{
+    margin-top: auto;
+}
