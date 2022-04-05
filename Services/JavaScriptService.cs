@@ -43,14 +43,11 @@ public class JavaScriptService
     }
 
     public async Task<string> Execute(string channel, string code)
-        => await Execute(channel, code, new());
-
-    public async Task<string> Execute(string channel, string code, Dictionary<string, object> hostObjects)
     {
         if (!_engines.ContainsKey(channel))
             return null;
             
-        return await _engines[channel].Execute(code, hostObjects);
+        return await _engines[channel].Execute(code);
     }
 
     public string FlushLogs(string channel)

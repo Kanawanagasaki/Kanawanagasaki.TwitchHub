@@ -1,8 +1,10 @@
 namespace Kanawanagasaki.TwitchHub.Pages;
 
+using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Data.JsHostObjects;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.ClearScript;
 using Microsoft.JSInterop;
 
 public partial class AfkScreen : ComponentBase, IAsyncDisposable
@@ -11,6 +13,8 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
     public JavaScriptService JsService { get; set; }
     [Inject]
     public IJSRuntime Js { get; set; }
+    [Inject]
+    public TwitchChatService Chat { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -20,32 +24,49 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
     [SupplyParameterFromQuery]
     public string Channel { get; set; }
 
-    private AfkScreenJs _afkScreen;
-    private int _tickCounter = 0;
+    private AfkSceneData _afkScreen;
     private IJSObjectReference _loopObj;
+    private DateTime _startDateTime;
 
-    protected override async Task OnInitializedAsync()
+    private JsEngine _engine;
+
+    private int _framesToSkip = 0;
+    private int _skippedFramesCounter = 0;
+
+    protected override void OnInitialized()
     {
         if (string.IsNullOrWhiteSpace(Channel)) return;
 
         JsService.OnEngineStateChange += (channel) =>
         {
+            if (!JsService.HasEngineForChannel(Channel)) return;
             if (channel == Channel)
             {
                 InvokeAsync(async () =>
                 {
+                    _engine = JsService.Engines[Channel];
+                    _engine.StreamApi.afk.OnCodeChange += ()=>
+                    {
+                        InvokeAsync(async() => await Init());
+                    };
                     await Init();
                     StateHasChanged();
                 });
             }
         };
-
-        await Init();
     }
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(Channel)) return;
+        if (!JsService.HasEngineForChannel(Channel)) return;
+
+        _engine = JsService.Engines[Channel];
+        _engine.StreamApi.afk.OnCodeChange += ()=>
+        {
+            InvokeAsync(async() => await Init());
+        };
+
         await Init();
     }
 
@@ -53,22 +74,23 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
     {
         if (!JsService.HasEngineForChannel(Channel)) return;
 
-        _afkScreen = new();
-        if(!string.IsNullOrWhiteSpace(Content))
-            _afkScreen.SetContent(Content);
+        _startDateTime = DateTime.UtcNow;
 
-        var engine = JsService.Engines[Channel];
+        _afkScreen = new();
+        if (!string.IsNullOrWhiteSpace(Content))
+            _afkScreen.SetContent(Content);
 
         try
         {
-            await engine.Execute($"({engine.ScreenApi.InitCode})(_$afkScreen)", new() { { "_$afkScreen", _afkScreen } });
+            _afkScreen = _engine.RegisterHostObjects("_$afkScreen", _afkScreen);
+            _engine.RegisterHostObjects("_$symbols", _afkScreen.symbols);
+
+            await _engine.Execute($"({_engine.StreamApi.afk.initCode})(_$afkScreen)");
+            _engine.FlushLogs();
         }
-        catch
+        catch(Exception e)
         {
-            engine.ScreenApi.ResetToDefault();
-            if(flag)
-                await Init(false);
-            _tickCounter = 0;
+            await ProcessException(e, flag);
         }
     }
 
@@ -85,20 +107,77 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
     public async Task OnTick()
     {
         if (!JsService.HasEngineForChannel(Channel)) return;
-        var engine = JsService.Engines[Channel];
+        if(_skippedFramesCounter > 0)
+        {
+            _skippedFramesCounter--;
+            return;
+        }
+
+        var tickCode = _engine.StreamApi.afk.tickCode;
+        var symbolTickCode = _engine.StreamApi.afk.symbolTickCode;
+
+        var diff = DateTime.UtcNow - _startDateTime;
+        var tickCounter = (int)(diff.TotalMilliseconds / 10);
+
+        var code = $@"
+            ({tickCode})(_$afkScreen, {tickCounter});
+            for(let i = 0; i < _$symbols.length; i++)
+                ({symbolTickCode})(_$symbols[i], i, _$symbols.length, {tickCounter});
+        ";
 
         try
         {
-            await engine.Execute($"({engine.ScreenApi.TickCode})(_$afkScreen, {_tickCounter})", new() { { "_$afkScreen", _afkScreen } });
-            _tickCounter++;
+            await _engine.Execute(code);
+            _framesToSkip = 0;
+
+            var logs = _engine.FlushLogs();
+            if(!string.IsNullOrWhiteSpace(logs))
+            {
+                if(tickCode == _engine.StreamApi.afk.tickCode)
+                    _engine.StreamApi.afk.resetToDefault();
+                else
+                {
+                    _engine.StreamApi.afk.SetOnTick(tickCode);
+                    _engine.StreamApi.afk.SetOnSymbolTick(symbolTickCode);
+                }
+                Chat.Client.SendMessage(Channel, logs);
+            }
         }
-        catch
+        catch(Exception e)
         {
-            engine.ScreenApi.ResetToDefault();
-            await Init();
-            _tickCounter = 0;
+            await ProcessException(e);
         }
         StateHasChanged();
+    }
+
+    private async Task ProcessException(Exception e, bool flag = true)
+    {
+        if(e.Message != "ReferenceError: _$afkScreen is not defined" && e.Message != "The V8 runtime cannot perform the requested operation because a script exception is pending")
+        {
+            if(e is ScriptEngineException)
+                Chat.Client.SendMessage(Channel, e.Message);
+            
+            _engine.StreamApi.afk.resetToDefault();
+            if(flag)
+                await Init(false);
+            _startDateTime = DateTime.UtcNow;
+        }
+        else
+        {
+            if(e is ScriptEngineException see)
+            {
+                Console.WriteLine(see.EngineName);
+                Console.WriteLine(see.ErrorDetails);
+                Console.WriteLine(see.ExecutionStarted);
+                Console.WriteLine(see.IsFatal);
+                Console.WriteLine(see.ScriptException);
+                Console.WriteLine(see.StackTrace);
+                Console.WriteLine(see.TargetSite);
+            }
+            _framesToSkip++;
+            _skippedFramesCounter = _framesToSkip;
+            Console.WriteLine($"Skipping {_framesToSkip} frames");
+        }
     }
 
     public async ValueTask DisposeAsync()

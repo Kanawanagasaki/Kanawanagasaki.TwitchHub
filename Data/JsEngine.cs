@@ -2,17 +2,19 @@ namespace Kanawanagasaki.TwitchHub.Data;
 
 using Kanawanagasaki.TwitchHub.Data.JsHostObjects;
 using Microsoft.ClearScript.V8;
+using Newtonsoft.Json;
 
 public class JsEngine : IDisposable
 {
     public string Channel { get; set; }
     public string LastCodeExecuted { get; private set; }
 
-    public ScreenApiJs ScreenApi { get; private set; }
+    public StreamApi StreamApi { get; private set; }
 
     private V8ScriptEngine _engine;
     private List<string> _logs = new();
 
+    private Dictionary<string, object> _registeredHostObjects = new();
 
     public JsEngine(string channel)
     {
@@ -24,56 +26,51 @@ public class JsEngine : IDisposable
 
         _engine.AddHostObject("console", new
         {
-            log = new Action<object>((str) =>
+            log = new Action<object>((obj) =>
             {
-                if (_logs.Count < 100)
-                    _logs.Add(str.ToString());
+                if (_logs.Count > 100) return;
+                
+                _logs.Add(obj.ToString());
             })
         });
 
-        ScreenApi = new ScreenApiJs(this);
-        _engine.AddHostObject("screenApi", ScreenApi);
+        StreamApi = new StreamApi(this);
+        _engine.AddHostObject("stream", StreamApi);
     }
 
-    public async Task<string> Execute(string code, Dictionary<string, object> hostObjects)
+    public T RegisterHostObjects<T>(string name, T obj) where T : class
     {
-        CancellationTokenSource source = new();
+        if(_registeredHostObjects.ContainsKey(name))
+            return _registeredHostObjects[name] as T;
 
-        bool finished = false;
-        bool interrupted = false;
-        var taskRun = Task.Run(() =>
+        lock(_registeredHostObjects)
         {
-            foreach (var kv in hostObjects)
-                _engine.AddHostObject(kv.Key, kv.Value);
+            _engine.AddHostObject(name, obj);
+            _registeredHostObjects.Add(name, obj);
+        }
+        return obj;
+    }
 
+    public async Task<string> Execute(string code)
+    {
+        bool finished = false;
+
+        var mainTask = Task.Run(()=>
+        {
             LastCodeExecuted = code;
             var result = _engine.ExecuteCommand(code);
             finished = true;
-
-            if (!interrupted)
-                source.Cancel();
-
             return result;
         });
 
-        try
-        {
-            await Task.Delay(250, source.Token);
-        }
-        catch { }
+        var delayTask = Task.Delay(250);
 
-        if (finished)
-        {
-            if (hostObjects.Count > 0)
-                _engine.Execute(string.Join("\n", hostObjects.Select(kv => $"delete {kv.Key};")));
-        }
-        else
-        {
-            interrupted = true;
+        await Task.WhenAny(mainTask, delayTask);
+
+        if(!finished)
             _engine.Interrupt();
-        }
 
-        return await taskRun;
+        return await mainTask;
     }
 
     public string FlushLogs()
