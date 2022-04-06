@@ -62,6 +62,8 @@ public partial class ChatMessageComponent : ComponentBase, IDisposable
         if(Message != _cachedMessage)
         {
             _shouldRehighlight = Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code);
+            if(_shouldRehighlight)
+                _codeFlag = !_codeFlag;
 
             if(IsLast)
             {

@@ -25,6 +25,9 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
     public string Channel { get; set; }
 
     private AfkSceneData _afkScreen;
+    private string _afkScreenJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
+    private string _symbolsJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
+
     private IJSObjectReference _loopObj;
     private DateTime _startDateTime;
 
@@ -82,10 +85,10 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
 
         try
         {
-            _afkScreen = _engine.RegisterHostObjects("_$afkScreen", _afkScreen);
-            _engine.RegisterHostObjects("_$symbols", _afkScreen.symbols);
+            _engine.RegisterHostObjects(_afkScreenJsName, _afkScreen);
+            _engine.RegisterHostObjects(_symbolsJsName, _afkScreen.symbols);
 
-            await _engine.Execute($"({_engine.StreamApi.afk.initCode})(_$afkScreen)");
+            await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkScreenJsName})");
             _engine.FlushLogs();
         }
         catch(Exception e)
@@ -120,9 +123,9 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
         var tickCounter = (int)(diff.TotalMilliseconds / 10);
 
         var code = $@"
-            ({tickCode})(_$afkScreen, {tickCounter});
-            for(let i = 0; i < _$symbols.length; i++)
-                ({symbolTickCode})(_$symbols[i], i, _$symbols.length, {tickCounter});
+            ({tickCode})({_afkScreenJsName}, {tickCounter});
+            for(let i = 0; i < {_symbolsJsName}.length; i++)
+                ({symbolTickCode})({_symbolsJsName}[i], i, {_symbolsJsName}.length, {tickCounter});
         ";
 
         try
@@ -152,7 +155,7 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
 
     private async Task ProcessException(Exception e, bool flag = true)
     {
-        if(e.Message != "ReferenceError: _$afkScreen is not defined" && e.Message != "The V8 runtime cannot perform the requested operation because a script exception is pending")
+        if(e.Message != "ReferenceError: _afkScreenJsName is not defined" && e.Message != "The V8 runtime cannot perform the requested operation because a script exception is pending")
         {
             if(e is ScriptEngineException)
                 Chat.Client.SendMessage(Channel, e.Message);

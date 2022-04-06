@@ -38,17 +38,16 @@ public class JsEngine : IDisposable
         _engine.AddHostObject("stream", StreamApi);
     }
 
-    public T RegisterHostObjects<T>(string name, T obj) where T : class
+    public void RegisterHostObjects(string name, object obj)
     {
         if(_registeredHostObjects.ContainsKey(name))
-            return _registeredHostObjects[name] as T;
+            return;
 
         lock(_registeredHostObjects)
         {
             _engine.AddHostObject(name, obj);
             _registeredHostObjects.Add(name, obj);
         }
-        return obj;
     }
 
     public async Task<string> Execute(string code)
