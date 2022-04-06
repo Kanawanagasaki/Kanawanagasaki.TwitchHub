@@ -47,7 +47,7 @@ public class JavaScriptService
         if (!_engines.ContainsKey(channel))
             return null;
             
-        return await _engines[channel].Execute(code);
+        return await _engines[channel].Execute(code, true);
     }
 
     public string FlushLogs(string channel)

@@ -88,7 +88,7 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
             _engine.RegisterHostObjects(_afkScreenJsName, _afkScreen);
             _engine.RegisterHostObjects(_symbolsJsName, _afkScreen.symbols);
 
-            await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkScreenJsName})");
+            await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkScreenJsName})", false);
             _engine.FlushLogs();
         }
         catch(Exception e)
@@ -130,13 +130,13 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
 
         try
         {
-            await _engine.Execute(code);
+            await _engine.Execute(code, false);
             _framesToSkip = 0;
 
             var logs = _engine.FlushLogs();
             if(!string.IsNullOrWhiteSpace(logs))
             {
-                if(tickCode == _engine.StreamApi.afk.tickCode)
+                if(tickCode == _engine.StreamApi.afk.tickCode && symbolTickCode == _engine.StreamApi.afk.symbolTickCode)
                     _engine.StreamApi.afk.resetToDefault();
                 else
                 {
@@ -167,20 +167,12 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
         }
         else
         {
-            if(e is ScriptEngineException see)
-            {
-                Console.WriteLine(see.EngineName);
-                Console.WriteLine(see.ErrorDetails);
-                Console.WriteLine(see.ExecutionStarted);
-                Console.WriteLine(see.IsFatal);
-                Console.WriteLine(see.ScriptException);
-                Console.WriteLine(see.StackTrace);
-                Console.WriteLine(see.TargetSite);
-            }
             _framesToSkip++;
             _skippedFramesCounter = _framesToSkip;
             Console.WriteLine($"Skipping {_framesToSkip} frames");
         }
+
+        Console.WriteLine(e);
     }
 
     public async ValueTask DisposeAsync()

@@ -40,23 +40,23 @@ public class JsEngine : IDisposable
 
     public void RegisterHostObjects(string name, object obj)
     {
-        if(_registeredHostObjects.ContainsKey(name))
-            return;
-
         lock(_registeredHostObjects)
         {
+            if(_registeredHostObjects.ContainsKey(name))
+                _engine.ExecuteCommand($"delete {name};");
             _engine.AddHostObject(name, obj);
-            _registeredHostObjects.Add(name, obj);
+            _registeredHostObjects[name] = obj;
         }
     }
 
-    public async Task<string> Execute(string code)
+    public async Task<string> Execute(string code, bool fromCommand)
     {
         bool finished = false;
 
         var mainTask = Task.Run(()=>
         {
-            LastCodeExecuted = code;
+            if(fromCommand)
+                LastCodeExecuted = code;
             var result = _engine.ExecuteCommand(code);
             finished = true;
             return result;
