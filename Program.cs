@@ -19,10 +19,12 @@ builder.Services.AddSingleton<TwitchAuthService>();
 builder.Services.AddSingleton<TwitchApiService>();
 builder.Services.AddSingleton<TwitchChatService>();
 builder.Services.AddSingleton<JavaScriptService>();
+builder.Services.AddSingleton<TtsService>();
 
 builder.Services.AddHostedService(sp => sp.GetService<EmotesService>());
 builder.Services.AddHostedService(sp => sp.GetService<TwitchAuthService>());
 builder.Services.AddHostedService(sp => sp.GetService<TwitchChatService>());
+builder.Services.AddHostedService(sp => sp.GetService<TtsService>());
 
 builder.WebHost.UseUrls("http://localhost:5678");
 

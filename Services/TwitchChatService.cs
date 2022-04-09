@@ -41,13 +41,15 @@ public class TwitchChatService : BackgroundService
     private List<string> _channelsToJoin = new();
     private IServiceScopeFactory _serviceFactory;
     private JavaScriptService _js;
+    private TtsService _tts;
 
     public TwitchChatService(TwitchAuthService twAuth,
         TwitchApiService twApi,
         CommandsService commands,
         ILogger<TwitchChatService> logger,
         IServiceScopeFactory serviceFactory,
-        JavaScriptService js)
+        JavaScriptService js,
+        TtsService tts)
     {
         _twAuth = twAuth;
         _twApi = twApi;
@@ -55,6 +57,7 @@ public class TwitchChatService : BackgroundService
         _logger = logger;
         _serviceFactory = serviceFactory;
         _js = js;
+        _tts = tts;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -243,6 +246,9 @@ public class TwitchChatService : BackgroundService
                     res = res.WithCode(content);
                 }
             }
+
+            if(res.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message) && res.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
+                _tts.AddTextToRead(res.Original.Message);
         }
 
         if (res.ShouldReply)
