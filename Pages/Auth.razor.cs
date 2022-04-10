@@ -1,15 +1,24 @@
 namespace Kanawanagasaki.TwitchHub.Pages;
 
 using System.Web;
+using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
 
 public partial class Auth : ComponentBase
 {
     [Inject]
+    public TwitchAuthService TwAuth { get; set; }
+    [Inject]
     public IConfiguration Conf { get; set; }
-
+    [Inject]
+    public SQLiteContext Db { get; set; }
     [Inject]
     public NavigationManager NavMgr { get; set; }
+
+    protected override void OnInitialized()
+    {
+        TwAuth.AuthenticationChange += _ => InvokeAsync(StateHasChanged);
+    }
 
     private void NavigateToTwitchAuth()
     {

@@ -1,7 +1,9 @@
 namespace Kanawanagasaki.TwitchHub.Pages;
 
+using Kanawanagasaki.TwitchHub.Models;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.EntityFrameworkCore;
 
 public partial class FollowersCounter : ComponentBase
 {
@@ -11,6 +13,8 @@ public partial class FollowersCounter : ComponentBase
     public TwitchAuthService TwAuth { get; set; }
     [Inject]
     public NavigationManager NavMgr { get; set; }
+    [Inject]
+    public SQLiteContext Db { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -23,24 +27,31 @@ public partial class FollowersCounter : ComponentBase
 
     protected override void OnInitialized()
     {
-        TwAuth.AuthenticationChange += () =>
+        TwAuth.AuthenticationChange += model =>
         {
-            if (!TwAuth.IsAuthenticated) return;
-
-            InvokeAsync(async () =>
-            {
-                _channel = await TwApi.GetUserByLogin(Channel);
-                StateHasChanged();
-            });
+            if (model.Username.ToLower() != Channel) return;
+            InvokeAsync(async () => await UpdateChannel(model));
         };
     }
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(Channel)) return;
-        if (!TwAuth.IsAuthenticated) return;
+        
+        var model = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.Username.ToLower() == Channel.ToLower());
+        if(model is null) return;
+        await UpdateChannel(model);
+    }
 
-        _channel = await TwApi.GetUserByLogin(Channel);
+    private async Task UpdateChannel(TwitchAuthModel model)
+    {
+        _channel = await TwApi.GetUserByLogin(model.AccessToken, Channel);
+        if(_channel is null)
+        {
+            await TwAuth.Restore(model);
+            _channel = await TwApi.GetUserByLogin(model.AccessToken, Channel);
+        }
+
         StateHasChanged();
     }
 }

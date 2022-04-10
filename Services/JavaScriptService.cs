@@ -11,7 +11,6 @@ public class JavaScriptService
     public IReadOnlyDictionary<string, JsEngine> Engines => _engines;
 
     private IServiceScopeFactory _serviceFactory;
-    private TwitchChatService _twChat;
 
     public event Action<string> OnEngineStateChange;
 
@@ -23,14 +22,6 @@ public class JavaScriptService
 
     public void CreateEngine(string channel)
     {
-        if (_twChat is null)
-        {
-            using (var scope = _serviceFactory.CreateScope())
-            {
-                _twChat = scope.ServiceProvider.GetService<TwitchChatService>();
-            }
-        }
-
         lock (_engines)
         {
             if (!_engines.ContainsKey(channel))
@@ -53,10 +44,7 @@ public class JavaScriptService
     public string FlushLogs(string channel)
     {
         if (!_engines.ContainsKey(channel)) return null;
-
-        var logs = _engines[channel].FlushLogs();
-        _twChat.Client.SendMessage(channel, logs);
-        return logs;
+        return _engines[channel].FlushLogs();
     }
 
     public void DisposeEngine(string channel)

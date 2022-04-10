@@ -6,6 +6,7 @@
 # config files
 twitch_accessToken.json
 appsettings.json
+data.db
 textcommands.txt
 custom-sctiprs/
 

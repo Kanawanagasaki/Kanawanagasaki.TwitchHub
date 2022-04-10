@@ -1,8 +1,10 @@
 namespace Kanawanagasaki.TwitchHub.Components;
 
 using System.Threading.Tasks;
+using Kanawanagasaki.TwitchHub.Models;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.EntityFrameworkCore;
 using TwitchLib.PubSub;
 
 public partial class TwitchFollowersCounter : ComponentBase
@@ -13,6 +15,8 @@ public partial class TwitchFollowersCounter : ComponentBase
     public TwitchAuthService TwAuth { get; set; }
     [Inject]
     public ILogger<TwitchFollowersCounter> Logger { get; set; }
+    [Inject]
+    public SQLiteContext Db { get; set; }
 
     [Parameter]
     public string ChannelId { get; set; }
@@ -23,27 +27,37 @@ public partial class TwitchFollowersCounter : ComponentBase
 
     protected override void OnInitialized()
     {
-        TwAuth.AuthenticationChange += () =>
+        TwAuth.AuthenticationChange += model =>
         {
-            InvokeAsync(async () =>
-            {
-                if(!string.IsNullOrEmpty(ChannelId))
-                    _count = await TwApi.GetFollowersCount(ChannelId);
-                StateHasChanged();
-            });
+            InvokeAsync(async () => await UpdateCount(model));
         };
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        while(true)
+        while (true)
         {
-            if(!string.IsNullOrEmpty(ChannelId) && TwAuth.IsAuthenticated)
+            if (!string.IsNullOrWhiteSpace(ChannelId))
             {
-                _count = await TwApi.GetFollowersCount(ChannelId);
-                StateHasChanged();
+                var model = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == ChannelId);
+                if(model is not null)
+                    await UpdateCount(model);
             }
             await Task.Delay(120_000);
         }
+    }
+
+    private async Task UpdateCount(TwitchAuthModel model)
+    {
+        if (string.IsNullOrWhiteSpace(ChannelId)) return;
+        if (!model.IsValid) return;
+
+        _count = await TwApi.GetFollowersCount(model.AccessToken, ChannelId);
+        if (_count < 0)
+        {
+            await TwAuth.Restore(model);
+            _count = await TwApi.GetFollowersCount(model.AccessToken, ChannelId);
+        }
+        StateHasChanged();
     }
 }

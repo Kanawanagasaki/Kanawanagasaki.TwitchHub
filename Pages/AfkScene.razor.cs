@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.ClearScript;
 using Microsoft.JSInterop;
 
-public partial class AfkScreen : ComponentBase, IAsyncDisposable
+public partial class AfkScene : ComponentBase, IAsyncDisposable
 {
     [Inject]
     public JavaScriptService JsService { get; set; }
@@ -24,8 +24,8 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
     [SupplyParameterFromQuery]
     public string Channel { get; set; }
 
-    private AfkSceneData _afkScreen;
-    private string _afkScreenJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
+    private AfkSceneData _afkScene;
+    private string _afkSceneJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
     private string _symbolsJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
 
     private IJSObjectReference _loopObj;
@@ -79,16 +79,16 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
 
         _startDateTime = DateTime.UtcNow;
 
-        _afkScreen = new();
+        _afkScene = new();
         if (!string.IsNullOrWhiteSpace(Content))
-            _afkScreen.SetContent(Content);
+            _afkScene.SetContent(Content);
 
         try
         {
-            _engine.RegisterHostObjects(_afkScreenJsName, _afkScreen);
-            _engine.RegisterHostObjects(_symbolsJsName, _afkScreen.symbols);
+            _engine.RegisterHostObjects(_afkSceneJsName, _afkScene);
+            _engine.RegisterHostObjects(_symbolsJsName, _afkScene.symbols);
 
-            await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkScreenJsName})", false);
+            await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkSceneJsName})", false);
             _engine.FlushLogs();
         }
         catch(Exception e)
@@ -123,7 +123,7 @@ public partial class AfkScreen : ComponentBase, IAsyncDisposable
         var tickCounter = (int)(diff.TotalMilliseconds / 10);
 
         var code = $@"
-            ({tickCode})({_afkScreenJsName}, {tickCounter});
+            ({tickCode})({_afkSceneJsName}, {tickCounter});
             for(let i = 0; i < {_symbolsJsName}.length; i++)
                 ({symbolTickCode})({_symbolsJsName}[i], i, {_symbolsJsName}.length, {tickCounter});
         ";

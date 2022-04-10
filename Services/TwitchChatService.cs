@@ -14,8 +14,9 @@ using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using Microsoft.JSInterop;
+using Kanawanagasaki.TwitchHub.Models;
 
-public class TwitchChatService : BackgroundService
+public class TwitchChatService : IDisposable
 {
     private static Dictionary<string, (string code, string name, string slug)> CODE_LANGUAGES = new()
     {
@@ -60,27 +61,9 @@ public class TwitchChatService : BackgroundService
         _tts = tts;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public void Connect(TwitchAuthModel authModel)
     {
-        TwitchGetUsersResponse user = null;
-
-        while (!stoppingToken.IsCancellationRequested && (!_twAuth.IsAuthenticated || user is null))
-        {
-            if (_twAuth.IsAuthenticated)
-            {
-                user = await _twApi.GetUser();
-                if (user is null)
-                {
-                    _logger.LogWarning("Failed to get user");
-                    await Task.Delay(2500);
-                }
-            }
-            else await Task.Delay(2500);
-        }
-
-        if (user is null) return;
-
-        ConnectionCredentials credentials = new ConnectionCredentials(user.login, _twAuth.AccessToken);
+        ConnectionCredentials credentials = new ConnectionCredentials(authModel.Username, authModel.AccessToken);
         var clientOptions = new ClientOptions
         {
             MessagesAllowedInPeriod = 750,
@@ -92,26 +75,27 @@ public class TwitchChatService : BackgroundService
 
         Client.OnConnected += (_, _) =>
         {
-            _logger.LogInformation("Connected");
+            _logger.LogInformation($"[{authModel.Username}] Connected");
             foreach (var channel in _channelsToJoin)
                 Client.JoinChannel(channel);
         };
         Client.OnJoinedChannel += (_, ev) =>
         {
-            _logger.LogInformation($"Channel {ev.Channel} joined");
+            _logger.LogInformation($"[{authModel.Username}] Channel {ev.Channel} joined");
             if (!_channelsToJoin.Contains(ev.Channel))
                 Client.LeaveChannel(ev.Channel);
         };
         Client.OnLeftChannel += (_, ev) =>
         {
-            _logger.LogInformation($"Channel {ev.Channel} left");
+            _logger.LogInformation($"[{authModel.Username}] Channel {ev.Channel} left");
             if (_channelsToJoin.Contains(ev.Channel))
                 Client.JoinChannel(ev.Channel);
         };
         Client.OnDisconnected += (_, _) =>
         {
-            _logger.LogInformation($"Disconnected");
-            Client.Connect();
+            _logger.LogInformation($"[{authModel.Username}] Disconnected");
+            if(Client is not null)
+                Client.Connect();
         };
         Client.OnMessageReceived += MessageReceived;
 
@@ -146,7 +130,7 @@ public class TwitchChatService : BackgroundService
     {
         _logger.LogInformation($"{ev.ChatMessage.DisplayName}: {ev.ChatMessage.Message}");
 
-        var res = _commands.ProcessMessage(ev.ChatMessage);
+        var res = await _commands.ProcessMessage(ev.ChatMessage, this);
 
         if (!res.IsCommand)
         {
@@ -257,9 +241,12 @@ public class TwitchChatService : BackgroundService
         OnMessage?.Invoke(res);
     }
 
-    public override Task StopAsync(CancellationToken cancellationToken)
+    public void Dispose()
     {
-        _logger.LogInformation("Service stop working");
-        return base.StopAsync(cancellationToken);
+        if(Client is not null)
+        {
+            Client.Disconnect();
+            Client = null;
+        }
     }
 }

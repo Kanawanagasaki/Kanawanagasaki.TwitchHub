@@ -1,64 +1,60 @@
 using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Services.Commands;
+using Microsoft.EntityFrameworkCore;
 using TwitchLib.Client.Models;
 
 namespace Kanawanagasaki.TwitchHub.Services;
 
 public class CommandsService
 {
+    private SQLiteContext _db;
+
     private Dictionary<string, ACommand> _commands = new();
     public IReadOnlyDictionary<string, ACommand> Commands => _commands;
 
     private Dictionary<string, string> _externalCommands = new();
     public IReadOnlyDictionary<string, string> ExternalCommands => _externalCommands;
 
-    private Dictionary<string, string> _textCommands = new();
-    public IReadOnlyDictionary<string, string> TextCommands => _textCommands;
-
-    public CommandsService(JavaScriptService js)
+    public CommandsService(JavaScriptService js, SQLiteContext db)
     {
+        _db = db;
+
         RegisterCommand(new DiceCommand());
-        RegisterCommand(new CommandsCommand(this));
-        RegisterCommand(new HelpCommand(this));
+        RegisterCommand(new CommandsCommand(this, db));
+        RegisterCommand(new HelpCommand(this, db));
         RegisterCommand(new AddCommandCommand(this));
         RegisterCommand(new RemoveCommandCommand(this));
         RegisterCommand(new JsCommand(js));
 
         _externalCommands.Add("drop", "Drop from the sky!");
-
-        if(File.Exists("textcommands.txt"))
-        {
-            var lines = File.ReadAllLines("textcommands.txt");
-            for(int i = 0; i < lines.Length - 1; i+=2)
-                _textCommands[lines[i]] = lines[i + 1];
-        }
     }
 
-    public void AddTextCommand(string commandName, string text)
+    public async Task AddTextCommand(string commandName, string text)
     {
-        _textCommands[commandName] = text;
-        var lines = new List<string>();
-        foreach(var kv in _textCommands)
+        var model = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name.ToLower() == commandName.ToLower());
+        if(model is null)
         {
-            lines.Add(kv.Key);
-            lines.Add(kv.Value);
-        }
-        File.WriteAllLines("textcommands.txt", lines);
-    }
-
-    public void RemoveTextCommand(string commandName)
-    {
-        if(_textCommands.ContainsKey(commandName))
-        {
-            _textCommands.Remove(commandName);
-            var lines = new List<string>();
-            foreach(var kv in _textCommands)
+            model = new()
             {
-                lines.Add(kv.Key);
-                lines.Add(kv.Value);
-            }
-            File.WriteAllLines("textcommands.txt", lines);
+                Name = commandName.ToLower(),
+                Text = text
+            };
+            await _db.TextCommands.AddAsync(model);
         }
+        else model.Text = text;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<bool> RemoveTextCommand(string commandName)
+    {
+        var model = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name.ToLower() == commandName.ToLower());
+        if(model is not null)
+        {
+            _db.TextCommands.Remove(model);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        else return false;
     }
 
     private void RegisterCommand(ACommand command)
@@ -66,7 +62,7 @@ public class CommandsService
         _commands[command.Name] = command;
     }
 
-    public ProcessedChatMessage ProcessMessage(ChatMessage message)
+    public async Task<ProcessedChatMessage> ProcessMessage(ChatMessage message, TwitchChatService chat)
     {
         var processedMessage = new ProcessedChatMessage(message);
 
@@ -78,11 +74,19 @@ public class CommandsService
             if(_commands.ContainsKey(commandName))
             {
                 if(_commands[commandName].IsAuthorizedToExecute(message))
-                    processedMessage = _commands[commandName].Execute(processedMessage.AsCommand(commandName, args));
+                {
+                    processedMessage = processedMessage.AsCommand(commandName, args);
+                    processedMessage = _commands[commandName].Execute(processedMessage, chat);
+                    processedMessage = await _commands[commandName].ExecuteAsync(processedMessage, chat);
+                }
                 else processedMessage = processedMessage.WithReply($"@{message.DisplayName}, you not authozired to execute this command");
             }
-            else if(_textCommands.ContainsKey(commandName))
-                processedMessage = processedMessage.WithReply(_textCommands[commandName]);
+            else
+            {
+                var command = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name == commandName.ToLower());
+                if(command is not null)
+                    processedMessage = processedMessage.WithReply(command.Text);
+            }
         }
 
         return processedMessage;

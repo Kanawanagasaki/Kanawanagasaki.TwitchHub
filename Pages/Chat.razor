@@ -1,18 +1,27 @@
 @page "/chat"
 
-@if(!TwAuth.IsAuthenticated)
-{
-    <div>
-        Not authenticated
-    </div>
-}
-else if(string.IsNullOrWhiteSpace(Channel))
+@if(string.IsNullOrWhiteSpace(Channel))
 {
     <div>
         You should speciffy channel name in your Query like: @(NavMgr.Uri + (NavMgr.Uri.Contains("?") ? "&" : "?"))channel=kanawanagasakiyoko
     </div>
+    @if(string.IsNullOrWhiteSpace(Bot))
+    {
+        <div>
+            You also can specify bot that will listen for chat messages via "bot" Query parameter like: @(NavMgr.Uri + (NavMgr.Uri.Contains("?") ? "&" : "?"))bot=kanawanagasaki
+        </div>
+        <div>
+            Otherwise, "channel" will be used as name of bot that will listen to messages
+        </div>
+    }
+}
+else if(_model is null || !_model.IsValid)
+{
+    <div>
+        @_bot not authenticated
+    </div>
 }
 else
 {
-    <ChatComponent Channel="@Channel" />
+    <ChatComponent Channel="@Channel" AuthModel="@_model" />
 }

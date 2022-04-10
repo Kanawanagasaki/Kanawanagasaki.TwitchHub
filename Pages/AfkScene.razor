@@ -1,4 +1,4 @@
-@page "/afk-screen"
+@page "/afk-scene"
 
 @if(string.IsNullOrWhiteSpace(Channel))
 {
@@ -14,8 +14,8 @@ else if(!JsService.HasEngineForChannel(Channel))
 }
 else
 {
-    <div class='root' style='background: @(_afkScreen.bg.Replace("\\", "").Replace("url(", "(").Replace(";", "\\;"));'>
-        @foreach(var letter in _afkScreen.symbols)
+    <div class='root' style='background: @(_afkScene.bg.Replace("\\", "").Replace("url(", "(").Replace(";", "\\;"));'>
+        @foreach(var letter in _afkScene.symbols)
         {
             <span class='letter'
                 style="

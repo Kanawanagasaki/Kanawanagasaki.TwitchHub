@@ -10,5 +10,6 @@ public abstract class ACommand
 
     public virtual bool IsAuthorizedToExecute(ChatMessage message) => true;
 
-    public abstract ProcessedChatMessage Execute(ProcessedChatMessage chatMessage);
+    public virtual ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatService chat) => chatMessage;
+    public virtual Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatService chat) => Task.FromResult(chatMessage);
 }

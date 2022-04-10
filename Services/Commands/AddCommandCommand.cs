@@ -18,12 +18,12 @@ public class AddCommandCommand : ACommand
 
     public override bool IsAuthorizedToExecute(ChatMessage message) => message.IsBroadcaster;
 
-    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage)
+    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatService chat)
     {
         if(chatMessage.CommandArgs.Length < 2)
             return chatMessage.WithoutMessage().WithReply($"@{chatMessage.Original.DisplayName}, please provide command name and text for it");
 
-        _service.AddTextCommand(chatMessage.CommandArgs[0], string.Join(" ", chatMessage.CommandArgs.Skip(1)));
+        await _service.AddTextCommand(chatMessage.CommandArgs[0], string.Join(" ", chatMessage.CommandArgs.Skip(1)));
         return chatMessage.WithoutMessage().WithReply($"@{chatMessage.Original.DisplayName}, command successfully created");
     }
 }

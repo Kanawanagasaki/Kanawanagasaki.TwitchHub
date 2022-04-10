@@ -21,9 +21,8 @@ public partial class TwitchAuthResponse : ComponentBase
         if(_processed) return;
 
         var uri = new Uri(NavMgr.Uri);
-        if(await TwAuth.SignIn($"{uri.Scheme}://{uri.Host}:{uri.Port}/twitchauthresponse", Code))
-            NavMgr.NavigateTo("/");
-        else NavMgr.NavigateTo("/Auth");
+        await TwAuth.SignIn($"{uri.Scheme}://{uri.Host}:{uri.Port}/twitchauthresponse", Code);
+        NavMgr.NavigateTo("/Auth");
 
         _processed = true;
     }

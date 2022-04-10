@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Kanawanagasaki.TwitchHub.Data.JsHostObjects;
 
-public class AfkSceneApi
+public class AfkSceneApi : IDisposable
 {
     private const string DEFAULT_INIT_CODE = @"(obj) => {
         obj.bg = 'linear-gradient(0deg,#8a4c69,#c45123)';
@@ -38,27 +38,20 @@ public class AfkSceneApi
     public string symbolTickCode { get; private set; } = DEFAULT_SYMBOL_TICK_CODE;
 
     private JsEngine _engine;
-    private string _directory = "custom-sctiprs";
-    private string _saveFile => $"{_directory}/{_engine.Channel}.json";
+    private SQLiteContext _db;
 
     public AfkSceneApi(JsEngine engine)
     {
         _engine = engine;
+        _db = new SQLiteContext();
 
-        try
+        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _engine.Channel.ToLower());
+        if(model is null) resetToDefault();
+        else
         {
-            if(File.Exists(_saveFile))
-            {
-                var json = File.ReadAllText(_saveFile);
-                var obj = JsonConvert.DeserializeObject<JObject>(json);
-                initCode = obj.Value<string>("initCode");
-                tickCode = obj.Value<string>("tickCode");
-                symbolTickCode = obj.Value<string>("symbolTickCode");
-            }
-        }
-        catch
-        {
-            resetToDefault();
+            initCode = model.InitCode;
+            tickCode = model.TickCode;
+            symbolTickCode = model.SymbolTickCode;
         }
     }
 
@@ -73,9 +66,9 @@ public class AfkSceneApi
 
     public void onInit(object callback)
     {
-        if(callback.GetType().Name != "V8ScriptItem") return;
+        if (callback.GetType().Name != "V8ScriptItem") return;
         initCode = ParseCode(nameof(onInit));
-        if(initCode is not null)
+        if (initCode is not null)
         {
             Save();
             OnCodeChange?.Invoke();
@@ -91,9 +84,9 @@ public class AfkSceneApi
 
     public void onTick(object callback)
     {
-        if(callback.GetType().Name != "V8ScriptItem") return;
+        if (callback.GetType().Name != "V8ScriptItem") return;
         tickCode = ParseCode(nameof(onTick));
-        if(tickCode is not null)
+        if (tickCode is not null)
         {
             Save();
             OnCodeChange?.Invoke();
@@ -109,9 +102,9 @@ public class AfkSceneApi
 
     public void onSymbolTick(object callback)
     {
-        if(callback.GetType().Name != "V8ScriptItem") return;
+        if (callback.GetType().Name != "V8ScriptItem") return;
         symbolTickCode = ParseCode(nameof(onSymbolTick));
-        if(symbolTickCode is not null)
+        if (symbolTickCode is not null)
         {
             Save();
             OnCodeChange?.Invoke();
@@ -128,60 +121,68 @@ public class AfkSceneApi
     private string ParseCode(string methodName)
     {
         var methodIndex = _engine.LastCodeExecuted.LastIndexOf(methodName);
-        if(methodIndex < 0) return null;
+        if (methodIndex < 0) return null;
 
         var afkIndex = _engine.LastCodeExecuted.LastIndexOf("afk", methodIndex);
-        if(afkIndex < 0) return null;
+        if (afkIndex < 0) return null;
 
         var streamIndex = _engine.LastCodeExecuted.LastIndexOf("stream", methodIndex);
-        if(streamIndex < 0) return null;
-        
+        if (streamIndex < 0) return null;
+
         var dot = _engine.LastCodeExecuted.Substring(afkIndex + 3, methodIndex - afkIndex - 3).Trim();
-        if(dot != ".") return null;
-        
+        if (dot != ".") return null;
+
         dot = _engine.LastCodeExecuted.Substring(streamIndex + 6, afkIndex - streamIndex - 6).Trim();
-        if(dot != ".") return null;
+        if (dot != ".") return null;
 
         var parenthesisIndex = _engine.LastCodeExecuted.IndexOf("(", methodIndex + methodName.Length);
-        if(parenthesisIndex < 0) return null;
+        if (parenthesisIndex < 0) return null;
 
         var nothingness = _engine.LastCodeExecuted.Substring(methodIndex + methodName.Length, parenthesisIndex - methodIndex - methodName.Length).Trim();
-        if(nothingness != "") return null;
+        if (nothingness != "") return null;
 
         int parenthesisCounter = 0;
         int lastParenthesisIndex = -1;
-        for(int i = parenthesisIndex; i < _engine.LastCodeExecuted.Length; i++)
+        for (int i = parenthesisIndex; i < _engine.LastCodeExecuted.Length; i++)
         {
-            if(_engine.LastCodeExecuted[i] == '(')
+            if (_engine.LastCodeExecuted[i] == '(')
                 parenthesisCounter++;
-            else if(_engine.LastCodeExecuted[i] == ')')
+            else if (_engine.LastCodeExecuted[i] == ')')
                 parenthesisCounter--;
 
-            if(parenthesisCounter <= 0)
+            if (parenthesisCounter <= 0)
             {
                 lastParenthesisIndex = i;
                 break;
             }
         }
 
-        if(lastParenthesisIndex < 0) return null;
+        if (lastParenthesisIndex < 0) return null;
 
         return _engine.LastCodeExecuted.Substring(parenthesisIndex + 1, lastParenthesisIndex - parenthesisIndex - 1);
     }
 
     private void Save()
     {
-        if(!Directory.Exists(_directory))
-            Directory.CreateDirectory(_directory);
-
-        var obj = new
+        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _engine.Channel.ToLower());
+        if(model is null)
         {
-            initCode = initCode,
-            tickCode = tickCode,
-            symbolTickCode = symbolTickCode
-        };
-        var json = JsonConvert.SerializeObject(obj);
-        File.WriteAllText(_saveFile, json);
+            model = new()
+            {
+                Channel = _engine.Channel,
+                InitCode = initCode,
+                TickCode = tickCode,
+                SymbolTickCode = symbolTickCode
+            };
+            _db.JsAfkCodes.Add(model);
+        }
+        else
+        {
+            model.InitCode = initCode;
+            model.TickCode = tickCode;
+            model.SymbolTickCode = symbolTickCode;
+        }
+        _db.SaveChanges();
     }
 
     public override string ToString()
@@ -194,4 +195,10 @@ public class AfkSceneApi
             + "onTick: function(callback: (obj: AfkSceneData, tick: number) => void), "
             + "onSymbolTick: function(callback: (symbol: SymbolData, index: number, length: number, tick: number) => void)"
             + " }";
+
+    public void Dispose()
+    {
+        if(_db is not null)
+            _db.Dispose();
+    }
 }

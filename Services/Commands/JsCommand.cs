@@ -12,7 +12,7 @@ public class JsCommand : ACommand
 
     public JsCommand(JavaScriptService js) => _js = js;
     
-    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage)
+    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatService chat)
     {
         string code = string.Join(" ", chatMessage.CommandArgs);
         chatMessage.WithCode(new CodeContent(code, ("js", "javascript", "javascript")));
@@ -32,7 +32,10 @@ public class JsCommand : ACommand
             }
             var logs = _js.FlushLogs(chatMessage.Original.Channel);
             if(!string.IsNullOrWhiteSpace(logs))
+            {
                 chatMessage.WithCustomContent(new OutputContent(logs));
+                chat.Client.SendMessage(chatMessage.Original.Channel, logs);
+            }
         }
         catch(AggregateException e)
         {

@@ -1,21 +1,22 @@
 namespace Kanawanagasaki.TwitchHub.Services;
 
 using System.Threading;
+using Kanawanagasaki.TwitchHub.Models;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 public class TwitchAuthService : BackgroundService
 {
-    public string AccessToken { get; private set; }
+    public event Action<TwitchAuthModel> AuthenticationChange;
 
-    public bool IsAuthenticated { get; private set; } = false;
-    public event Action AuthenticationChange;
-
+    private IServiceScopeFactory _scopeFactory;
     private IConfiguration _conf;
     private ILogger<TwitchAuthService> _logger;
 
-    public TwitchAuthService(IConfiguration conf, ILogger<TwitchAuthService> logger)
+    public TwitchAuthService(IServiceScopeFactory scopeFactory, IConfiguration conf, ILogger<TwitchAuthService> logger)
     {
+        _scopeFactory = scopeFactory;
         _conf = conf;
         _logger = logger;
     }
@@ -27,30 +28,39 @@ public class TwitchAuthService : BackgroundService
 
     public async Task Restore()
     {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetService<SQLiteContext>();
+        var models = await db.TwitchAuth.ToArrayAsync();
+
+        foreach(var model in models)
+            await Restore(model);
+    }
+
+    public async Task Restore(TwitchAuthModel model)
+    {
         try
         {
-            if(!File.Exists("twitch_accessToken.json"))
-                return;
-            var json = await File.ReadAllTextAsync("twitch_accessToken.json");
-
-            var obj = JsonConvert.DeserializeObject<JObject>(json);
-            var accessToken = obj.Value<string>("access_token");
-            var refreshToken = obj.Value<string>("refresh_token");
-
-            if(await Validate(AccessToken))
+            var isValid = await Validate(model.AccessToken);
+            if(!isValid)
             {
-                AccessToken = accessToken;
-
-                IsAuthenticated = true;
-                AuthenticationChange?.Invoke();
+                isValid = await RefreshToken(model);
+                if(!isValid)
+                    _logger.LogWarning("Failed to refresh token for " + model.Username);
             }
-            else if(!await RefreshToken(refreshToken))
-                _logger.LogWarning("Failed to refresh token");
+            if(isValid != model.IsValid)
+            {
+                model.IsValid = isValid;
+                AuthenticationChange?.Invoke(model);
+            }
         }
         catch(Exception e)
         {
             _logger.LogError(e.Message);
+            model.IsValid = false;
         }
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetService<SQLiteContext>();
+        await db.SaveChangesAsync();
     }
 
     public async Task<bool> Validate(string token)
@@ -63,6 +73,9 @@ public class TwitchAuthService : BackgroundService
 
     public async Task<bool> SignIn(string redirecturi, string code)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetService<SQLiteContext>();
+
         Dictionary<string, string> postData = new()
         {
             { "client_id", _conf["Twitch:ClientId"] },
@@ -78,27 +91,53 @@ public class TwitchAuthService : BackgroundService
         if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
-            await File.WriteAllTextAsync("twitch_accessToken.json", json);
-
             var obj = JsonConvert.DeserializeObject<JObject>(json);
-            AccessToken = obj.Value<string>("access_token");
+            
+            var accessToken = obj.Value<string>("access_token");
+            var refreshToken = obj.Value<string>("refresh_token");
 
-            IsAuthenticated = true;
-            AuthenticationChange?.Invoke();
+            var api = scope.ServiceProvider.GetService<TwitchApiService>();
+            var user = await api.GetUser(accessToken);
+            if(user is null) return false;
+
+            var model = await db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == user.id);
+            if(model is null)
+            {
+                model = new()
+                {
+                    Uuid = Guid.NewGuid(),
+                    UserId = user.id,
+                    Username = user.login,
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
+                    IsValid = true
+                };
+                await db.TwitchAuth.AddAsync(model);
+            }
+            else
+            {
+                model.Username = user.login;
+                model.AccessToken = accessToken;
+                model.RefreshToken = refreshToken;
+                model.IsValid = true;
+            }
+            await db.SaveChangesAsync();
+
+            AuthenticationChange?.Invoke(model);
 
             return true;
         }
         else return false;
     }
 
-    public async Task<bool> RefreshToken(string refreshToken)
+    public async Task<bool> RefreshToken(TwitchAuthModel model)
     {
         using var http = new HttpClient();
 
         var data = new Dictionary<string, string>
         {
             { "grant_type", "refresh_token" },
-            { "refresh_token", refreshToken },
+            { "refresh_token", model.RefreshToken },
             { "client_id", _conf["Twitch:ClientId"] },
             { "client_secret", _conf["Twitch:Secret"] }
         };
@@ -108,13 +147,9 @@ public class TwitchAuthService : BackgroundService
         if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
-            await File.WriteAllTextAsync("twitch_accessToken.json", json);
-
             var obj = JsonConvert.DeserializeObject<JObject>(json);
-            AccessToken = obj.Value<string>("access_token");
-
-            IsAuthenticated = true;
-            AuthenticationChange?.Invoke();
+            model.AccessToken = obj.Value<string>("access_token");
+            model.RefreshToken = obj.Value<string>("refresh_token");
 
             return true;
         }

@@ -8,7 +8,7 @@ public class DiceCommand : ACommand
 
     public override string Description => "Throw a dice and get a number!";
 
-    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage)
+    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatService chat)
     {
         int min = 1, max = 6;
         if(chatMessage.CommandArgs.Length == 1)

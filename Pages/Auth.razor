@@ -2,6 +2,44 @@
 
 <div class='root'>
     <div class='container'>
-        <button @onclick='NavigateToTwitchAuth'>LogIn</button>
+        <h1>Auth</h1>
+        <div class='twitch'>
+            <h3>Twitch</h3>
+            
+            <table>
+                <tr>
+                    <th>
+                        ID
+                    </th>
+                    <th>
+                        Username
+                    </th>
+                    <th>
+                        Status
+                    </th>
+                    <th>
+                        Actions
+                    </th>
+                </tr>
+                @foreach (var item in Db.TwitchAuth)
+                {
+                    <tr>
+                        <td>
+                            @item.UserId
+                        </td>
+                        <td>
+                            @item.Username
+                        </td>
+                        <td>
+                            @(item.IsValid ? "✔️" : "❌" )
+                        </td>
+                        <td>
+                            WIP
+                        </td>
+                    </tr>
+                }
+            </table>
+            <button @onclick='NavigateToTwitchAuth'>Add Account</button>
+        </div>
     </div>
 </div>
