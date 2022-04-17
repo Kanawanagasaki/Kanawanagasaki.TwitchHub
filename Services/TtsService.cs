@@ -11,7 +11,6 @@ public class TtsService : BackgroundService
     private SpeechSynthesizer _synthesizer;
     private List<string> _textToRead = new();
 
-
     public TtsService(IConfiguration conf)
         => (_conf) = (conf);
 

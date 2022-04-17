@@ -35,7 +35,6 @@ public partial class Chat : ComponentBase
 
         _model = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.Username.ToLower() == _bot.ToLower());
         if (_model is not null)
-            if (!_model.IsValid)
-                await TwAuth.Restore(_model);
+            await TwAuth.Restore(_model);
     }
 }

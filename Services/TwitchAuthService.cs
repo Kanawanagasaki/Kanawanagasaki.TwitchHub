@@ -34,6 +34,8 @@ public class TwitchAuthService : BackgroundService
 
         foreach(var model in models)
             await Restore(model);
+
+        await db.SaveChangesAsync();
     }
 
     public async Task Restore(TwitchAuthModel model)
@@ -43,10 +45,13 @@ public class TwitchAuthService : BackgroundService
             var isValid = await Validate(model.AccessToken);
             if(!isValid)
             {
+                _logger.LogWarning("Failed to validate token for " + model.Username);
                 isValid = await RefreshToken(model);
                 if(!isValid)
                     _logger.LogWarning("Failed to refresh token for " + model.Username);
+                else _logger.LogInformation("Tokens for " + model.Username + " successfully refreshed");
             }
+            else _logger.LogInformation("Tokens for " + model.Username + " is valid");
             if(isValid != model.IsValid)
             {
                 model.IsValid = isValid;
@@ -58,9 +63,6 @@ public class TwitchAuthService : BackgroundService
             _logger.LogError(e.Message);
             model.IsValid = false;
         }
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetService<SQLiteContext>();
-        await db.SaveChangesAsync();
     }
 
     public async Task<bool> Validate(string token)

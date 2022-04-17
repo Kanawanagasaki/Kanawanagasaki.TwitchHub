@@ -65,10 +65,13 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
         var globalBadges = await TwApi.GetGlobalBadges(AuthModel.AccessToken);
         Badges.Clear();
-        foreach (var badge in globalBadges.data)
+        if(globalBadges is not null)
         {
-            var version = badge.versions.OrderByDescending(v => int.TryParse(v.id, out var id) ? id : 0).First();
-            Badges[badge.set_id] = version.image_url_1x;
+            foreach (var badge in globalBadges.data)
+            {
+                var version = badge.versions.OrderByDescending(v => int.TryParse(v.id, out var id) ? id : 0).First();
+                Badges[badge.set_id] = version.image_url_1x;
+            }
         }
 
         if (_channelObj is not null)

@@ -98,6 +98,7 @@ public class TwitchChatService : IDisposable
                 Client.Connect();
         };
         Client.OnMessageReceived += MessageReceived;
+        // Client.OnLog += (_, ev) => _logger.LogDebug($"LOG:[{ev.BotUsername}] {ev.Data}");
 
         Client.Connect();
     }
