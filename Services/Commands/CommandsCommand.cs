@@ -18,7 +18,7 @@ public class CommandsCommand : ACommand
         _db = db;
     }
 
-    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatService chat)
+    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatMessagesService chat)
     {
         List<string> commandNames = new();
         commandNames.AddRange(_service.Commands.Where(c => c.Value.IsAuthorizedToExecute(chatMessage.Original)).Select(c => c.Value.Name));

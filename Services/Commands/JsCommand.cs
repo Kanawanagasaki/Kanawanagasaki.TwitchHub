@@ -7,19 +7,15 @@ public class JsCommand : ACommand
 {
     public override string Name => "js";
     public override string Description => "Run javascript";
-
-    private JavaScriptService _js;
-
-    public JsCommand(JavaScriptService js) => _js = js;
     
-    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatService chat)
+    public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatMessagesService chat)
     {
         string code = string.Join(" ", chatMessage.CommandArgs);
         chatMessage.WithCode(new CodeContent(code, ("js", "javascript", "javascript")));
 
         try
         {
-            var result = _js.Execute(chatMessage.Original.Channel, code).Result;
+            var result = chat.Js.Execute(code, true).Result;
             if(!string.IsNullOrWhiteSpace(result) && result != "[undefined]")
             {
                 if(result.StartsWith("/") || result.StartsWith("."))
@@ -30,7 +26,7 @@ public class JsCommand : ACommand
                     chatMessage.WithCustomContent(new OutputContent(result));
                 }
             }
-            var logs = _js.FlushLogs(chatMessage.Original.Channel);
+            var logs = chat.Js.FlushLogs();
             if(!string.IsNullOrWhiteSpace(logs))
             {
                 chatMessage.WithCustomContent(new OutputContent(logs));

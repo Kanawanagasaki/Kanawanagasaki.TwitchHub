@@ -19,20 +19,17 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddDbContext<SQLiteContext>();
 
 builder.Services.AddScoped<HelperService>();
-builder.Services.AddScoped<TwitchChatService>();
 builder.Services.AddScoped<CommandsService>();
+builder.Services.AddScoped<EmotesService>();
+builder.Services.AddScoped<TwitchAuthService>();
+builder.Services.AddScoped<TwitchApiService>();
+builder.Services.AddScoped<TwitchChatMessagesService>();
 
-builder.Services.AddSingleton<EmotesService>();
-builder.Services.AddSingleton<TwitchAuthService>();
-builder.Services.AddSingleton<TwitchApiService>();
+builder.Services.AddSingleton<JsEnginesService>();
 builder.Services.AddSingleton<TtsService>();
-builder.Services.AddSingleton<JavaScriptService>();
+builder.Services.AddSingleton<TwitchChatService>();
 
-builder.Services.AddHostedService(sp => sp.GetService<EmotesService>());
-builder.Services.AddHostedService(sp => sp.GetService<TwitchAuthService>());
 builder.Services.AddHostedService(sp => sp.GetService<TtsService>());
-
-builder.WebHost.UseUrls("http://localhost:5678");
 
 var app = builder.Build();
 
@@ -40,6 +37,7 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
+    builder.WebHost.UseUrls("http://localhost:5678");
 }
 
 app.UseStaticFiles();

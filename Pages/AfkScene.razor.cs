@@ -2,19 +2,24 @@ namespace Kanawanagasaki.TwitchHub.Pages;
 
 using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Data.JsHostObjects;
+using Kanawanagasaki.TwitchHub.Models;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.ClearScript;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
+using TwitchLib.Client;
 
 public partial class AfkScene : ComponentBase, IAsyncDisposable
 {
     [Inject]
-    public JavaScriptService JsService { get; set; }
+    public JsEnginesService JsEngines { get; set; }
     [Inject]
     public IJSRuntime Js { get; set; }
     [Inject]
     public TwitchChatService Chat { get; set; }
+    [Inject]
+    public SQLiteContext Db { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -23,6 +28,12 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     [Parameter]
     [SupplyParameterFromQuery]
     public string Channel { get; set; }
+    private string _cachedChannel = null;
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string Bot { get; set; }
+    private string _cachedBot = null;
 
     private AfkSceneData _afkScene;
     private string _afkSceneJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
@@ -32,51 +43,47 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     private DateTime _startDateTime;
 
     private JsEngine _engine;
+    private TwitchClient _chatClient;
+    private TwitchAuthModel _twAuth;
 
     private int _framesToSkip = 0;
     private int _skippedFramesCounter = 0;
 
-    protected override void OnInitialized()
-    {
-        if (string.IsNullOrWhiteSpace(Channel)) return;
-
-        JsService.OnEngineStateChange += (channel) =>
-        {
-            if (!JsService.HasEngineForChannel(Channel)) return;
-            if (channel == Channel)
-            {
-                InvokeAsync(async () =>
-                {
-                    _engine = JsService.Engines[Channel];
-                    _engine.StreamApi.afk.OnCodeChange += ()=>
-                    {
-                        InvokeAsync(async() => await Init());
-                    };
-                    await Init();
-                    StateHasChanged();
-                });
-            }
-        };
-    }
-
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(Channel)) return;
-        if (!JsService.HasEngineForChannel(Channel)) return;
+        if (string.IsNullOrWhiteSpace(Bot)) Bot = Channel;
 
-        _engine = JsService.Engines[Channel];
-        _engine.StreamApi.afk.OnCodeChange += ()=>
+        if (Channel != _cachedChannel)
         {
-            InvokeAsync(async() => await Init());
-        };
+            _engine = JsEngines.GetEngine(Channel);
+            _engine.StreamApi.afk.OnCodeChange += () =>
+            {
+                InvokeAsync(async () => await Init());
+            };
+
+            _cachedChannel = Channel;
+        }
+
+        if (Bot != _cachedBot)
+        {
+            if (_twAuth is not null)
+                Chat.Unlisten(_twAuth, this);
+
+            _twAuth = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.Username == Bot);
+            if(_twAuth is not null)
+            {
+                _chatClient = Chat.GetClient(_twAuth, this, Channel);
+            }
+
+            _cachedBot = Bot;
+        }
 
         await Init();
     }
 
     private async Task Init(bool flag = true)
     {
-        if (!JsService.HasEngineForChannel(Channel)) return;
-
         _startDateTime = DateTime.UtcNow;
 
         _afkScene = new();
@@ -91,7 +98,7 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
             await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkSceneJsName})", false);
             _engine.FlushLogs();
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             await ProcessException(e, flag);
         }
@@ -109,8 +116,7 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     [JSInvokable("onTick")]
     public async Task OnTick()
     {
-        if (!JsService.HasEngineForChannel(Channel)) return;
-        if(_skippedFramesCounter > 0)
+        if (_skippedFramesCounter > 0)
         {
             _skippedFramesCounter--;
             return;
@@ -134,19 +140,19 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
             _framesToSkip = 0;
 
             var logs = _engine.FlushLogs();
-            if(!string.IsNullOrWhiteSpace(logs))
+            if (!string.IsNullOrWhiteSpace(logs))
             {
-                if(tickCode == _engine.StreamApi.afk.tickCode && symbolTickCode == _engine.StreamApi.afk.symbolTickCode)
+                if (tickCode == _engine.StreamApi.afk.tickCode && symbolTickCode == _engine.StreamApi.afk.symbolTickCode)
                     _engine.StreamApi.afk.resetToDefault();
                 else
                 {
                     _engine.StreamApi.afk.SetOnTick(tickCode);
                     _engine.StreamApi.afk.SetOnSymbolTick(symbolTickCode);
                 }
-                Chat.Client.SendMessage(Channel, logs);
+                _chatClient.SendMessage(Channel, logs);
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             await ProcessException(e);
         }
@@ -155,13 +161,13 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
 
     private async Task ProcessException(Exception e, bool flag = true)
     {
-        if(e.Message != "ReferenceError: _afkScreenJsName is not defined" && e.Message != "The V8 runtime cannot perform the requested operation because a script exception is pending")
+        if (e.Message != "ReferenceError: _afkScreenJsName is not defined" && e.Message != "The V8 runtime cannot perform the requested operation because a script exception is pending")
         {
-            if(e is ScriptEngineException)
-                Chat.Client.SendMessage(Channel, e.Message);
-            
+            if (e is ScriptEngineException)
+                _chatClient.SendMessage(Channel, e.Message);
+
             _engine.StreamApi.afk.resetToDefault();
-            if(flag)
+            if (flag)
                 await Init(false);
             _startDateTime = DateTime.UtcNow;
         }

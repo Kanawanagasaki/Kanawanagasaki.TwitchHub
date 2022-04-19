@@ -6,10 +6,10 @@ public class StreamApi
 
     private JsEngine _engine;
 
-    public StreamApi(JsEngine engine)
+    public StreamApi(SQLiteContext db, JsEngine engine, string channel)
     {
         _engine = engine;
-        afk = new AfkSceneApi(engine);
+        afk = new AfkSceneApi(db, engine, channel);
     }
 
     public override string ToString()

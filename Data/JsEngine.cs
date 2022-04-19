@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 
 public class JsEngine : IDisposable
 {
-    public string Channel { get; set; }
     public string LastCodeExecuted { get; private set; }
 
     public StreamApi StreamApi { get; private set; }
@@ -16,10 +15,8 @@ public class JsEngine : IDisposable
 
     private Dictionary<string, object> _registeredHostObjects = new();
 
-    public JsEngine(string channel)
+    public JsEngine(SQLiteContext db, string channel)
     {
-        Channel = channel;
-
         _engine = new V8ScriptEngine(V8ScriptEngineFlags.EnableDateTimeConversion
                     | V8ScriptEngineFlags.EnableTaskPromiseConversion
                     | V8ScriptEngineFlags.EnableValueTaskPromiseConversion);
@@ -34,7 +31,7 @@ public class JsEngine : IDisposable
             })
         });
 
-        StreamApi = new StreamApi(this);
+        StreamApi = new StreamApi(db, this, channel);
         _engine.AddHostObject("stream", StreamApi);
     }
 

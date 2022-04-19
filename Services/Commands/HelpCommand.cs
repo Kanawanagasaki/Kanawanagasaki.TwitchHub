@@ -18,7 +18,7 @@ public class HelpCommand : ACommand
         _db = db;
     }
 
-    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatService chat)
+    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatMessagesService chat)
     {
         if(chatMessage.CommandArgs.Length == 0)
             return chatMessage.WithoutMessage().WithReply($"@{chatMessage.Original.DisplayName}, specify comamnd name to see description");

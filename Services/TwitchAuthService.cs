@@ -6,36 +6,41 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-public class TwitchAuthService : BackgroundService
+public class TwitchAuthService
 {
     public event Action<TwitchAuthModel> AuthenticationChange;
 
-    private IServiceScopeFactory _scopeFactory;
     private IConfiguration _conf;
     private ILogger<TwitchAuthService> _logger;
+    private SQLiteContext _db;
+    private TwitchApiService _api;
 
-    public TwitchAuthService(IServiceScopeFactory scopeFactory, IConfiguration conf, ILogger<TwitchAuthService> logger)
+    public TwitchAuthService(IConfiguration conf, ILogger<TwitchAuthService> logger, SQLiteContext db, TwitchApiService api)
     {
-        _scopeFactory = scopeFactory;
         _conf = conf;
         _logger = logger;
+        _db = db;
+        _api = api;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task<TwitchAuthModel> GetRestored(string twitchLogin)
     {
-        await Restore();
+        var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.Username == twitchLogin);
+        if(model is null) return null;
+
+        await Restore(model);
+        await _db.SaveChangesAsync();
+        return model;
     }
 
-    public async Task Restore()
+    public async Task<TwitchAuthModel> GetRestoredById(string id)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetService<SQLiteContext>();
-        var models = await db.TwitchAuth.ToArrayAsync();
+        var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == id);
+        if(model is null) return null;
 
-        foreach(var model in models)
-            await Restore(model);
-
-        await db.SaveChangesAsync();
+        await Restore(model);
+        await _db.SaveChangesAsync();
+        return model;
     }
 
     public async Task Restore(TwitchAuthModel model)
@@ -75,9 +80,6 @@ public class TwitchAuthService : BackgroundService
 
     public async Task<bool> SignIn(string redirecturi, string code)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetService<SQLiteContext>();
-
         Dictionary<string, string> postData = new()
         {
             { "client_id", _conf["Twitch:ClientId"] },
@@ -98,11 +100,10 @@ public class TwitchAuthService : BackgroundService
             var accessToken = obj.Value<string>("access_token");
             var refreshToken = obj.Value<string>("refresh_token");
 
-            var api = scope.ServiceProvider.GetService<TwitchApiService>();
-            var user = await api.GetUser(accessToken);
+            var user = await _api.GetUser(accessToken);
             if(user is null) return false;
 
-            var model = await db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == user.id);
+            var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == user.id);
             if(model is null)
             {
                 model = new()
@@ -114,7 +115,7 @@ public class TwitchAuthService : BackgroundService
                     RefreshToken = refreshToken,
                     IsValid = true
                 };
-                await db.TwitchAuth.AddAsync(model);
+                await _db.TwitchAuth.AddAsync(model);
             }
             else
             {
@@ -123,7 +124,7 @@ public class TwitchAuthService : BackgroundService
                 model.RefreshToken = refreshToken;
                 model.IsValid = true;
             }
-            await db.SaveChangesAsync();
+            await _db.SaveChangesAsync();
 
             AuthenticationChange?.Invoke(model);
 
@@ -132,7 +133,7 @@ public class TwitchAuthService : BackgroundService
         else return false;
     }
 
-    public async Task<bool> RefreshToken(TwitchAuthModel model)
+    private async Task<bool> RefreshToken(TwitchAuthModel model)
     {
         using var http = new HttpClient();
 

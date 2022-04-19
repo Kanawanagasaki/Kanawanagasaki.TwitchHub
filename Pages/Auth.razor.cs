@@ -1,8 +1,11 @@
 namespace Kanawanagasaki.TwitchHub.Pages;
 
+using System.Threading.Tasks;
 using System.Web;
+using Kanawanagasaki.TwitchHub.Models;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.EntityFrameworkCore;
 
 public partial class Auth : ComponentBase
 {
@@ -15,9 +18,16 @@ public partial class Auth : ComponentBase
     [Inject]
     public NavigationManager NavMgr { get; set; }
 
-    protected override void OnInitialized()
+    private TwitchAuthModel[] _models = Array.Empty<TwitchAuthModel>();
+
+    protected override async Task OnInitializedAsync()
     {
         TwAuth.AuthenticationChange += _ => InvokeAsync(StateHasChanged);
+
+        _models = await Db.TwitchAuth.ToArrayAsync();
+        foreach(var model in _models)
+            await TwAuth.Restore(model);
+        await Db.SaveChangesAsync();
     }
 
     private void NavigateToTwitchAuth()

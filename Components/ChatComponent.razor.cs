@@ -15,7 +15,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
     [Inject]
     public TwitchApiService TwApi { get; set; }
     [Inject]
-    public TwitchChatService TwChat { get; set; }
+    public TwitchChatMessagesService TwChat { get; set; }
     [Inject]
     public EmotesService Emotes { get; set; }
     [Inject]
@@ -61,7 +61,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
         if (Channel == _channelCache) return;
 
         Logger.LogDebug($"Connecting to {Channel} with {AuthModel.Username} account");
-        TwChat.Connect(AuthModel);
+        TwChat.Connect(AuthModel, Channel);
 
         var globalBadges = await TwApi.GetGlobalBadges(AuthModel.AccessToken);
         Badges.Clear();
@@ -96,11 +96,6 @@ public partial class ChatComponent : ComponentBase, IDisposable
             }
             else BttvEmotes = Array.Empty<BttvEmote>();
         }
-
-        if (!string.IsNullOrWhiteSpace(Channel))
-            TwChat.JoinChannel(Channel);
-        if (!string.IsNullOrWhiteSpace(_channelCache))
-            TwChat.LeaveChannel(_channelCache);
 
         await InitPubSub();
 
@@ -159,7 +154,8 @@ public partial class ChatComponent : ComponentBase, IDisposable
                 message.SetColor($"hsl({hsl.h}, {(int)(hsl.s * 100)}%, {(int)(hsl.l * 100)}%)");
             }
 
-            message.ParseEmotes(Emotes.GlobalBttvEmotes.Concat(BttvEmotes).ToArray());
+            var globalBttv = await Emotes.GetGlobalBttv() ?? Array.Empty<BttvEmote>();
+            message.ParseEmotes(globalBttv.Concat(BttvEmotes).ToArray());
 
             var user = await TwApi.GetUser(AuthModel.AccessToken, message.Original.UserId);
             if(user is null)
@@ -208,8 +204,6 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
     public void Dispose()
     {
-        if (!string.IsNullOrWhiteSpace(Channel))
-            TwChat.LeaveChannel(Channel);
         TwChat.OnMessage -= OnMessage;
 
         if (_pubSubClient is not null)

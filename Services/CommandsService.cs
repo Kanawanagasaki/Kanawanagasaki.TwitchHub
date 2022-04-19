@@ -15,7 +15,7 @@ public class CommandsService
     private Dictionary<string, string> _externalCommands = new();
     public IReadOnlyDictionary<string, string> ExternalCommands => _externalCommands;
 
-    public CommandsService(JavaScriptService js, SQLiteContext db)
+    public CommandsService(SQLiteContext db)
     {
         _db = db;
 
@@ -24,7 +24,7 @@ public class CommandsService
         RegisterCommand(new HelpCommand(this, db));
         RegisterCommand(new AddCommandCommand(this));
         RegisterCommand(new RemoveCommandCommand(this));
-        RegisterCommand(new JsCommand(js));
+        RegisterCommand(new JsCommand());
 
         _externalCommands.Add("drop", "Drop from the sky!");
     }
@@ -62,7 +62,7 @@ public class CommandsService
         _commands[command.Name] = command;
     }
 
-    public async Task<ProcessedChatMessage> ProcessMessage(ChatMessage message, TwitchChatService chat)
+    public async Task<ProcessedChatMessage> ProcessMessage(ChatMessage message, TwitchChatMessagesService chat)
     {
         var processedMessage = new ProcessedChatMessage(message);
 

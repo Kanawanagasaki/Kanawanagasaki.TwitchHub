@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using TwitchLib.PubSub;
 
-public partial class TwitchFollowersCounter : ComponentBase
+public partial class TwitchFollowersCounter : ComponentBase, IDisposable
 {
     [Inject]
     public TwitchApiService TwApi { get; set; }
@@ -25,17 +25,20 @@ public partial class TwitchFollowersCounter : ComponentBase
 
     private int _count = 0;
 
+    private bool _isRunning = true;
+
     protected override void OnInitialized()
     {
         TwAuth.AuthenticationChange += model =>
         {
-            InvokeAsync(async () => await UpdateCount(model));
+            if(model.UserId == ChannelId)
+                InvokeAsync(async () => await UpdateCount(model));
         };
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        while (true)
+        while (_isRunning)
         {
             if (!string.IsNullOrWhiteSpace(ChannelId))
             {
@@ -59,5 +62,10 @@ public partial class TwitchFollowersCounter : ComponentBase
             _count = await TwApi.GetFollowersCount(model.AccessToken, ChannelId);
         }
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _isRunning = false;
     }
 }

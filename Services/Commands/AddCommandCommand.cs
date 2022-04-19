@@ -18,7 +18,7 @@ public class AddCommandCommand : ACommand
 
     public override bool IsAuthorizedToExecute(ChatMessage message) => message.IsBroadcaster;
 
-    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatService chat)
+    public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage chatMessage, TwitchChatMessagesService chat)
     {
         if(chatMessage.CommandArgs.Length < 2)
             return chatMessage.WithoutMessage().WithReply($"@{chatMessage.Original.DisplayName}, please provide command name and text for it");

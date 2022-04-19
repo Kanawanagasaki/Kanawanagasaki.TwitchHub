@@ -4,23 +4,22 @@ using System.Collections.Concurrent;
 using System.Threading;
 using Newtonsoft.Json;
 
-public class EmotesService : BackgroundService
+public class EmotesService
 {
-    public BttvEmote[] GlobalBttvEmotes { get; private set; } = Array.Empty<BttvEmote>();
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        GlobalBttvEmotes = await GetGlobalBttv();
-    }
+    private BttvEmote[] _globalBttvEmotes { get; set; } = null;
 
     public async Task<BttvEmote[]> GetGlobalBttv()
     {
+        if(_globalBttvEmotes is not null)
+            return _globalBttvEmotes;
+
         using var http = new HttpClient();
         var response = await http.GetAsync($"https://api.betterttv.net/3/cached/emotes/global");
         if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<BttvEmote[]>(json);
+            _globalBttvEmotes = JsonConvert.DeserializeObject<BttvEmote[]>(json);
+            return _globalBttvEmotes;
         }
         else return null;
     }

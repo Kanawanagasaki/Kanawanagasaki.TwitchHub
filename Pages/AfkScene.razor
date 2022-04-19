@@ -6,12 +6,6 @@
         Please, provide channel name in query parameter
     </div>
 }
-else if(!JsService.HasEngineForChannel(Channel))
-{
-    <div>
-        Please, use chat overlay to connect to channel first before using afk-screen
-    </div>
-}
 else
 {
     <div class='root' style='background: @(_afkScene.bg.Replace("\\", "").Replace("url(", "(").Replace(";", "\\;"));'>

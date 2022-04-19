@@ -11,8 +11,6 @@ public partial class Chat : ComponentBase
     public TwitchAuthService TwAuth { get; set; }
     [Inject]
     public NavigationManager NavMgr { get; set; }
-    [Inject]
-    public SQLiteContext Db { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -30,11 +28,7 @@ public partial class Chat : ComponentBase
         if (string.IsNullOrWhiteSpace(Bot))
             _bot = Channel;
         else _bot = Bot;
-
         if(string.IsNullOrWhiteSpace(_bot)) return;
-
-        _model = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.Username.ToLower() == _bot.ToLower());
-        if (_model is not null)
-            await TwAuth.Restore(_model);
+        _model = await TwAuth.GetRestored(_bot);
     }
 }

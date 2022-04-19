@@ -40,12 +40,15 @@ public class AfkSceneApi : IDisposable
     private JsEngine _engine;
     private SQLiteContext _db;
 
-    public AfkSceneApi(JsEngine engine)
-    {
-        _engine = engine;
-        _db = new SQLiteContext();
+    private string _channel;
 
-        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _engine.Channel.ToLower());
+    public AfkSceneApi(SQLiteContext db, JsEngine engine, string channel)
+    {
+        _db = db;
+        _engine = engine;
+        _channel = channel;
+
+        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == channel.ToLower());
         if(model is null) resetToDefault();
         else
         {
@@ -164,12 +167,12 @@ public class AfkSceneApi : IDisposable
 
     private void Save()
     {
-        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _engine.Channel.ToLower());
+        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _channel.ToLower());
         if(model is null)
         {
             model = new()
             {
-                Channel = _engine.Channel,
+                Channel = _channel,
                 InitCode = initCode,
                 TickCode = tickCode,
                 SymbolTickCode = symbolTickCode

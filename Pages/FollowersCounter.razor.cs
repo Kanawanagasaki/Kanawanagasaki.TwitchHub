@@ -29,8 +29,8 @@ public partial class FollowersCounter : ComponentBase
     {
         TwAuth.AuthenticationChange += model =>
         {
-            if (model.Username.ToLower() != Channel) return;
-            InvokeAsync(async () => await UpdateChannel(model));
+            if (model.Username.ToLower() != Channel.ToLower()) return;
+                InvokeAsync(async () => await UpdateChannel(model));
         };
     }
 
