@@ -9,6 +9,7 @@ public class SQLiteContext : DbContext
     public DbSet<TwitchAuthModel> TwitchAuth { get; set; }
     public DbSet<TextCommandModel> TextCommands { get; set; }
     public DbSet<JsAfkCodeModel> JsAfkCodes { get; set; }
+    public DbSet<ViewerVoice> ViewerVoices { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

@@ -15,7 +15,7 @@ public class CommandsService
     private Dictionary<string, string> _externalCommands = new();
     public IReadOnlyDictionary<string, string> ExternalCommands => _externalCommands;
 
-    public CommandsService(SQLiteContext db)
+    public CommandsService(SQLiteContext db, TtsService tts)
     {
         _db = db;
 
@@ -25,6 +25,8 @@ public class CommandsService
         RegisterCommand(new AddCommandCommand(this));
         RegisterCommand(new RemoveCommandCommand(this));
         RegisterCommand(new JsCommand());
+        RegisterCommand(new GetVoicesCommand(tts));
+        RegisterCommand(new SetVoiceCommand(db, tts));
 
         _externalCommands.Add("drop", "Drop from the sky!");
     }

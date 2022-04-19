@@ -3,6 +3,7 @@ using System;
 using Kanawanagasaki.TwitchHub;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Kanawanagasaki.TwitchHub.Migrations
 {
     [DbContext(typeof(SQLiteContext))]
-    partial class SQLiteContextModelSnapshot : ModelSnapshot
+    [Migration("20220419223425_NewViewerVoice")]
+    partial class NewViewerVoice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.3");
@@ -94,9 +96,6 @@ namespace Kanawanagasaki.TwitchHub.Migrations
 
                     b.Property<double>("Rate")
                         .HasColumnType("REAL");
-
-                    b.Property<string>("Username")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("VoiceName")
                         .HasColumnType("TEXT");

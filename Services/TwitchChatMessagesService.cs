@@ -169,7 +169,7 @@ public class TwitchChatMessagesService : IDisposable
             }
 
             if (res.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message) && res.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
-                _tts.AddTextToRead(res.Original.Message);
+                _tts.AddTextToRead(res.Original.Username, res.Original.Message);
         }
 
         if (res.ShouldReply)
