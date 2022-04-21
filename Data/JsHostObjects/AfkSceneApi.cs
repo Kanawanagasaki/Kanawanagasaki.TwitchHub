@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -48,7 +49,7 @@ public class AfkSceneApi : IDisposable
         _engine = engine;
         _channel = channel;
 
-        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == channel.ToLower());
+        var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _channel.ToLower());
         if(model is null) resetToDefault();
         else
         {

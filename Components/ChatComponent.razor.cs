@@ -204,6 +204,8 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
     public void Dispose()
     {
+        TwChat.Disconnect();
+
         TwChat.OnMessage -= OnMessage;
 
         if (_pubSubClient is not null)

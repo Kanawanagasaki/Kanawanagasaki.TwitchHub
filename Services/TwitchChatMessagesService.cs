@@ -63,6 +63,15 @@ public class TwitchChatMessagesService : IDisposable
         Js = _jsEngines.GetEngine(channel);
     }
 
+    public void Disconnect()
+    {
+        if(Client is not null)
+            Client.OnMessageReceived -= MessageReceived;
+
+        if (_authModel is not null)
+            _chat.Unlisten(_authModel, this);
+    }
+
     private async void MessageReceived(object sender, OnMessageReceivedArgs ev)
     {
         _logger.LogInformation($"{ev.ChatMessage.DisplayName}: {ev.ChatMessage.Message}");
