@@ -6,7 +6,7 @@ namespace Kanawanagasaki.TwitchHub.Services.Commands;
 public class SetVoiceCommand : ACommand
 {
     public override string Name => "setvoice";
-    public override string Description => "Change your voice for tts on stream";
+    public override string Description => "Change your voice for tts on stream. Use !setvoice <name> or !setvoice <locale-name-type>";
 
     private SQLiteContext _db;
     private TtsService _tts;

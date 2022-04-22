@@ -6,7 +6,7 @@ public class DiceCommand : ACommand
 {
     public override string Name => "dice";
 
-    public override string Description => "Throw a dice and get a number!";
+    public override string Description => "Throw a dice and get a number! Use !dice <min> <max>";
 
     public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatMessagesService chat)
     {

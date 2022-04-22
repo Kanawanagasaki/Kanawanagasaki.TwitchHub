@@ -6,23 +6,26 @@ namespace Kanawanagasaki.TwitchHub.Data.JsHostObjects;
 
 public class AfkSceneApi : IDisposable
 {
-    private const string DEFAULT_INIT_CODE = @"(obj) => {
-        obj.bg = 'linear-gradient(0deg,#8a4c69,#c45123)';
-        for (let i = 0; i < obj.symbols.length; i++) {
-            let l = obj.symbols[i];
+    private const string DEFAULT_INIT_CODE = @"(scene) => {
+        scene.bg = '#e73232';
+        for (let i = 0; i < scene.symbols.length; i++) {
+            let l = scene.symbols[i];
             l.size = 72;
-            l.x = (-(obj.symbols.length * 36) / 2 + 18) + i * 36;
+            l.x = (-(scene.symbols.length * 36) / 2 + 18) + i * 36;
             l.y = -250;
+            l.shadow = '1px 1px 2px black';
         }
     }";
-    private const string DEFAULT_TICK_CODE = @"(obj, tick) =>
-    {
-        obj.bg = `linear-gradient(${tick % 360}deg,#8a4c69,#c45123)`;
+    private const string DEFAULT_TICK_CODE = @"(scene, time) => {
+        let x = (time/2)%200, y = (time/4) % 200;
+        let o=(z,w)=>`conic-gradient(#0000 25%, #00000080 25%, #0000 30%, #0000 70%, #00000080 75%, #0000 75%) ${z}px ${w}px / 200px 200px`;
+        let p=(z,w,a)=>`conic-gradient(from ${a}deg at 50% 50%, #ff4545 0%, 25%, #0000 25%) ${z}px ${w}px / 200px 200px repeat repeat`;
+        scene.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#e73232`;
     }";
-    private const string DEFAULT_SYMBOL_TICK_CODE = @"(symbol, index, count, tick) =>
+    private const string DEFAULT_SYMBOL_TICK_CODE = @"(symbol, index, count, time) =>
     {
         let tt = [140, 50, .7, .95];
-        let t = ((tick + (1 - index / count) * tt[1]) % tt[0]) / tt[0];
+        let t = ((time + (1 - index / count) * tt[1]) % tt[0]) / tt[0];
         if(t < tt[2])
             symbol.y = 0;
         else if(t < tt[3])

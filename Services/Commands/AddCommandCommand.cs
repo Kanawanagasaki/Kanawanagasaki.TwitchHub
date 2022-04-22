@@ -7,7 +7,7 @@ public class AddCommandCommand : ACommand
 {
     public override string Name => "addcommand";
 
-    public override string Description => "Create new text command";
+    public override string Description => "Create new text command, use !addcommand <name> <text>";
 
     private CommandsService _service;
 

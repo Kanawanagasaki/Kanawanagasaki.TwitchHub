@@ -7,7 +7,7 @@ public class RemoveCommandCommand : ACommand
 {
     public override string Name => "removecommand";
 
-    public override string Description => "Remove text command";
+    public override string Description => "Remove text command. Use !removecommand <commandName>";
 
     private CommandsService _service;
 

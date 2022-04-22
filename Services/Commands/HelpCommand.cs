@@ -7,7 +7,7 @@ public class HelpCommand : ACommand
 {
     public override string Name => "help";
 
-    public override string Description => "Show description of the command";
+    public override string Description => "Show description of the command. Use !help <commandName>";
 
     private CommandsService _service;
     private SQLiteContext _db;

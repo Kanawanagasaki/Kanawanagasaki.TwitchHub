@@ -6,7 +6,7 @@ public class GetVoicesCommand : ACommand
 {
     public override string Name => "getvoices";
 
-    public override string Description => "Get voices available for tts";
+    public override string Description => "Get voices available for tts. Use !getvoices, !getvoices <language>";
 
     private TtsService _tts;
 
