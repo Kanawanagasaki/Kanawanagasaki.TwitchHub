@@ -8,6 +8,7 @@ namespace Kanawanagasaki.TwitchHub.Services;
 public class CommandsService
 {
     private SQLiteContext _db;
+    private ILogger<CommandsService> _logger;
 
     private Dictionary<string, ACommand> _commands = new();
     public IReadOnlyDictionary<string, ACommand> Commands => _commands;
@@ -15,9 +16,10 @@ public class CommandsService
     private Dictionary<string, string> _externalCommands = new();
     public IReadOnlyDictionary<string, string> ExternalCommands => _externalCommands;
 
-    public CommandsService(SQLiteContext db, TtsService tts)
+    public CommandsService(SQLiteContext db, TtsService tts, ILogger<CommandsService> logger)
     {
         _db = db;
+        _logger = logger;
 
         RegisterCommand(new DiceCommand());
         RegisterCommand(new CommandsCommand(this, db));
@@ -68,27 +70,34 @@ public class CommandsService
     {
         var processedMessage = new ProcessedChatMessage(message);
 
-        if(message.Message.StartsWith("!"))
+        try
         {
-            string[] split = message.Message.Substring(1).Split(" ");
-            string commandName = split[0];
-            string[] args = split.Skip(1).ToArray();
-            if(_commands.ContainsKey(commandName))
+            if(message.Message.StartsWith("!"))
             {
-                if(_commands[commandName].IsAuthorizedToExecute(message))
+                string[] split = message.Message.Substring(1).Split(" ");
+                string commandName = split[0];
+                string[] args = split.Skip(1).ToArray();
+                if(_commands.ContainsKey(commandName))
                 {
-                    processedMessage = processedMessage.AsCommand(commandName, args);
-                    processedMessage = _commands[commandName].Execute(processedMessage, chat);
-                    processedMessage = await _commands[commandName].ExecuteAsync(processedMessage, chat);
+                    if(_commands[commandName].IsAuthorizedToExecute(message))
+                    {
+                        processedMessage = processedMessage.AsCommand(commandName, args);
+                        processedMessage = _commands[commandName].Execute(processedMessage, chat);
+                        processedMessage = await _commands[commandName].ExecuteAsync(processedMessage, chat);
+                    }
+                    else processedMessage = processedMessage.WithReply($"@{message.DisplayName}, you not authozired to execute this command");
                 }
-                else processedMessage = processedMessage.WithReply($"@{message.DisplayName}, you not authozired to execute this command");
+                else
+                {
+                    var command = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name == commandName.ToLower());
+                    if(command is not null)
+                        processedMessage = processedMessage.WithReply(command.Text);
+                }
             }
-            else
-            {
-                var command = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name == commandName.ToLower());
-                if(command is not null)
-                    processedMessage = processedMessage.WithReply(command.Text);
-            }
+        }
+        catch(Exception e)
+        {
+            _logger.LogError(e.Message);
         }
 
         return processedMessage;
