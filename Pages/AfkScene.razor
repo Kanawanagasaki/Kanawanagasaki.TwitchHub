@@ -6,7 +6,7 @@
         Please, provide channel name in query parameter
     </div>
 }
-else
+else if(_afkScene is not null)
 {
     <div class='root' style='background: @(_afkScene.bg.Replace("\\", "").Replace("url(", "(").Replace(";", "\\;"));'>
         @foreach(var letter in _afkScene.symbols)

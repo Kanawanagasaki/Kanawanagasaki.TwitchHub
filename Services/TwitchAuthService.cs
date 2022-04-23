@@ -25,7 +25,7 @@ public class TwitchAuthService
 
     public async Task<TwitchAuthModel> GetRestored(string twitchLogin)
     {
-        var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.Username == twitchLogin);
+        var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.Username.ToLower() == twitchLogin.ToLower());
         if(model is null) return null;
 
         await Restore(model);
