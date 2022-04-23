@@ -14,10 +14,12 @@ public class JsEnginesService : IDisposable
         lock(_engines) lock(_db)
         {
             if(_engines.ContainsKey(channel))
-                return _engines[channel];
-            
-            engine = new JsEngine(_db, channel);
-            _engines[channel] = engine;
+                engine = _engines[channel];
+            else
+            {
+                engine = new JsEngine(_db, channel);
+                _engines[channel] = engine;
+            }
         }
         return engine;
     }

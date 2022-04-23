@@ -22,6 +22,8 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     public SQLiteContext Db { get; set; }
     [Inject]
     public TwitchAuthService TwAuth { get; set; }
+    [Inject]
+    public ILogger<AfkScene> Logger { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -51,6 +53,8 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     private int _framesToSkip = 0;
     private int _skippedFramesCounter = 0;
 
+    private bool _isInitialized = false;
+
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(Channel)) return;
@@ -73,8 +77,9 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
                 Chat.Unlisten(_twAuth, this);
 
             _twAuth = await TwAuth.GetRestored(Bot);
-            if (_twAuth is not null)
+            if (_twAuth is not null && _twAuth.IsValid)
                 _chatClient = Chat.GetClient(_twAuth, this, Channel);
+            else Logger.LogWarning($"Failed to connect to {Channel} as {Bot}");
 
             _cachedBot = Bot;
         }
@@ -84,6 +89,8 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
 
     private async Task Init(bool flag = true)
     {
+        _isInitialized = false;
+
         _startDateTime = DateTime.UtcNow;
 
         _afkScene = new();
@@ -97,6 +104,8 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
 
             await _engine.Execute($"({_engine.StreamApi.afk.initCode})({_afkSceneJsName})", false);
             _engine.FlushLogs();
+
+            _isInitialized = true;
         }
         catch (Exception e)
         {
@@ -116,6 +125,8 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     [JSInvokable("onTick")]
     public async Task OnTick()
     {
+        if(!_isInitialized) return;
+
         if (_skippedFramesCounter > 0)
         {
             _skippedFramesCounter--;
