@@ -20,6 +20,8 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     public TwitchChatService Chat { get; set; }
     [Inject]
     public SQLiteContext Db { get; set; }
+    [Inject]
+    public TwitchAuthService TwAuth { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -70,11 +72,9 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
             if (_twAuth is not null)
                 Chat.Unlisten(_twAuth, this);
 
-            _twAuth = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.Username == Bot);
-            if(_twAuth is not null)
-            {
+            _twAuth = await TwAuth.GetRestored(Bot);
+            if (_twAuth is not null)
                 _chatClient = Chat.GetClient(_twAuth, this, Channel);
-            }
 
             _cachedBot = Bot;
         }
