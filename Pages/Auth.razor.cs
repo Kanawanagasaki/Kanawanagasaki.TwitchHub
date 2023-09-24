@@ -25,8 +25,18 @@ public partial class Auth : ComponentBase
         TwAuth.AuthenticationChange += _ => InvokeAsync(StateHasChanged);
 
         _models = await Db.TwitchAuth.ToArrayAsync();
-        foreach(var model in _models)
+        foreach (var model in _models)
             await TwAuth.Restore(model);
+        await Db.SaveChangesAsync();
+    }
+
+    private async Task RefreshInfo(TwitchAuthModel model)
+    {
+        var validationModel = await TwAuth.Validate(model.AccessToken);
+        if (validationModel is null)
+            return;
+        model.UserId = validationModel.user_id;
+        model.Username = validationModel.login;
         await Db.SaveChangesAsync();
     }
 

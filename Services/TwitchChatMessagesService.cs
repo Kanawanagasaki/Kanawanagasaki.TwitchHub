@@ -1,3 +1,5 @@
+namespace Kanawanagasaki.TwitchHub.Services;
+
 using System.Net;
 using System.Web;
 using HtmlAgilityPack;
@@ -6,8 +8,6 @@ using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
-
-namespace Kanawanagasaki.TwitchHub.Services;
 
 public class TwitchChatMessagesService : IDisposable
 {
@@ -24,6 +24,8 @@ public class TwitchChatMessagesService : IDisposable
     };
 
     public event Action<ProcessedChatMessage> OnMessage;
+    public event Action<string> OnMessageDelete;
+    public event Action<string> OnUserSuspend;
 
     private TwitchChatService _chat;
     private CommandsService _commands;
@@ -59,13 +61,16 @@ public class TwitchChatMessagesService : IDisposable
 
         Client = _chat.GetClient(authModel, this, channel);
         Client.OnMessageReceived += MessageReceived;
+        Client.OnMessageCleared += MessageDeleted;
+        Client.OnUserTimedout += UserTimeout;
+        Client.OnUserBanned +=  UserBanned;
 
         Js = _jsEngines.GetEngine(channel);
     }
 
     public void Disconnect()
     {
-        if(Client is not null)
+        if (Client is not null)
             Client.OnMessageReceived -= MessageReceived;
 
         if (_authModel is not null)
@@ -163,6 +168,9 @@ public class TwitchChatMessagesService : IDisposable
             #endregion
 
             int backtickIndex = ev.ChatMessage.Message.IndexOf("`");
+            while (backtickIndex >= 0 && backtickIndex < ev.ChatMessage.Message.Length - 1 && ev.ChatMessage.Message[backtickIndex + 1] == '`')
+                backtickIndex++;
+
             int whitespaceIndex = ev.ChatMessage.Message.IndexOf(" ", backtickIndex + 1);
             if (backtickIndex >= 0 && whitespaceIndex >= 0 && ev.ChatMessage.Message.Length - backtickIndex >= 5)
             {
@@ -178,13 +186,31 @@ public class TwitchChatMessagesService : IDisposable
             }
 
             if (res.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message) && res.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
-                _tts.AddTextToRead(res.Original.Username, res.Original.Message);
+                _tts.AddTextToRead(res.Original.Id, res.Original.Username, res.Original.Message);
         }
 
         if (res.ShouldReply)
             Client.SendMessage(ev.ChatMessage.Channel, res.Reply);
 
         OnMessage?.Invoke(res);
+    }
+
+    private void MessageDeleted(object sernder, OnMessageClearedArgs ev)
+    {
+        _tts.DeleteById(ev.TargetMessageId);
+        OnMessageDelete?.Invoke(ev.TargetMessageId);
+    }
+
+    private void UserTimeout(object sernder, OnUserTimedoutArgs ev)
+    {
+        _tts.DeleteByUsername(ev.UserTimeout.Username);
+        OnUserSuspend?.Invoke(ev.UserTimeout.Username);
+    }
+
+    private void UserBanned(object sernder, OnUserBannedArgs ev)
+    {
+        _tts.DeleteByUsername(ev.UserBan.Username);
+        OnUserSuspend?.Invoke(ev.UserBan.Username);
     }
 
     public void Dispose()

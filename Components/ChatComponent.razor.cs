@@ -42,11 +42,11 @@ public partial class ChatComponent : ComponentBase, IDisposable
     private List<ProcessedChatMessage> _messages = new();
     private List<ChatMessageComponent> _components = new();
 
-    private TwitchPubSub _pubSubClient;
-
     protected override void OnInitialized()
     {
         TwChat.OnMessage += OnMessage;
+        TwChat.OnMessageDelete += OnMessageDelete;
+        TwChat.OnUserSuspend += OnUserSuspend;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -65,7 +65,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
         var globalBadges = await TwApi.GetGlobalBadges(AuthModel.AccessToken);
         Badges.Clear();
-        if(globalBadges is not null)
+        if (globalBadges is not null)
         {
             foreach (var badge in globalBadges.data)
             {
@@ -97,47 +97,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
             else BttvEmotes = Array.Empty<BttvEmote>();
         }
 
-        await InitPubSub();
-
         _channelCache = Channel;
-    }
-
-    private async Task InitPubSub()
-    {
-        if (_pubSubClient is not null)
-        {
-            _pubSubClient.Disconnect();
-            _pubSubClient = null;
-        }
-        if (_channelObj is null) return;
-
-        var model = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == _channelObj.id);
-
-        if(model is null || !model.IsValid)
-        {
-            Logger.LogWarning($"PubSub for {Channel} not connected due to missing authentication model");
-            return;
-        }
-
-        _pubSubClient = new TwitchPubSub();
-
-        _pubSubClient.OnPubSubServiceConnected += (obj, ev) =>
-        {
-            Logger.LogInformation($"[{model.Username}] Pubsub connected");
-            _pubSubClient.SendTopics(model.AccessToken);
-        };
-        _pubSubClient.OnFollow += (obj, ev) =>
-        {
-            Logger.LogInformation($"[{model.Username}] {ev.DisplayName} just followed you! Clap Clap");
-        };
-        _pubSubClient.OnLog += (obj, ev) =>
-        {
-            Logger.LogDebug($"[{model.Username}] " + ev.Data);
-        };
-
-        _pubSubClient.ListenToFollows(_channelObj.id);
-
-        _pubSubClient.Connect();
     }
 
     private void OnMessage(ProcessedChatMessage message)
@@ -158,7 +118,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
             message.ParseEmotes(globalBttv.Concat(BttvEmotes).ToArray());
 
             var user = await TwApi.GetUser(AuthModel.AccessToken, message.Original.UserId);
-            if(user is null)
+            if (user is null)
             {
                 await TwAuth.Restore(AuthModel);
                 user = await TwApi.GetUser(AuthModel.AccessToken, message.Original.UserId);
@@ -184,6 +144,35 @@ public partial class ChatComponent : ComponentBase, IDisposable
         });
     }
 
+    private void OnMessageDelete(string messageId)
+    {
+        InvokeAsync(() =>
+        {
+            int index = _messages.FindIndex(x => x.Original.Id == messageId);
+            if (index > 0)
+            {
+                _messages.RemoveAt(index);
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void OnUserSuspend(string username)
+    {
+        InvokeAsync(() =>
+        {
+            int index = -1;
+            do
+            {
+                index = _messages.FindIndex(x => x.Original.Username == username);
+                if (0 <= index)
+                    _messages.RemoveAt(index);
+            } while (0 <= index);
+
+            StateHasChanged();
+        });
+    }
+
     public void RegisterComponent(ChatMessageComponent component)
     {
         lock (_components)
@@ -205,13 +194,8 @@ public partial class ChatComponent : ComponentBase, IDisposable
     public void Dispose()
     {
         TwChat.Disconnect();
-
         TwChat.OnMessage -= OnMessage;
-
-        if (_pubSubClient is not null)
-        {
-            _pubSubClient.Disconnect();
-            _pubSubClient = null;
-        }
+        TwChat.OnMessageDelete -= OnMessageDelete;
+        TwChat.OnUserSuspend -= OnUserSuspend;
     }
 }

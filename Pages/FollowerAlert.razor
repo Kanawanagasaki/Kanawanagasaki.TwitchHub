@@ -1,0 +1,13 @@
+@page "/follower-alert"
+
+<div class='root' @ref='_ref'>
+    @if(_isSimulating)
+    {
+        <div class='ball' style='top: @(_y)%; left: @(_x)%;'></div>
+    }
+    @foreach (var point in _points)
+    {
+        <div class='ball' style='top: @(point.y)%; left: @(point.x)%;'></div>
+    }
+    <div class='center'>0</div>
+</div>

@@ -21,7 +21,7 @@
                         Actions
                     </th>
                 </tr>
-                @foreach (var item in Db.TwitchAuth)
+                @foreach (var item in _models)
                 {
                     <tr>
                         <td>
@@ -34,7 +34,7 @@
                             @(item.IsValid ? "✔️" : "❌" )
                         </td>
                         <td>
-                            WIP
+                            <button @onclick='async _ => await RefreshInfo(item)'>Refresh Info</button>
                         </td>
                     </tr>
                 }

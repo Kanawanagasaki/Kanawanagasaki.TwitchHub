@@ -1,0 +1,20 @@
+.root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+.ball {
+    position: absolute;
+    transform: translate(-5px, -5px);
+    width: 10px;
+    height: 10px;
+    background: red;
+}
+.center {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    top: 30%;
+    left: 50%;
+}

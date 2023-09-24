@@ -1,5 +1,6 @@
 namespace Kanawanagasaki.TwitchHub.Services;
 
+using System.Text.Json;
 using System.Threading;
 using Kanawanagasaki.TwitchHub.Models;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,7 @@ public class TwitchAuthService
     public async Task<TwitchAuthModel> GetRestored(string twitchLogin)
     {
         var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.Username.ToLower() == twitchLogin.ToLower());
-        if(model is null) return null;
+        if (model is null) return null;
 
         await Restore(model);
         await _db.SaveChangesAsync();
@@ -36,7 +37,7 @@ public class TwitchAuthService
     public async Task<TwitchAuthModel> GetRestoredById(string id)
     {
         var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == id);
-        if(model is null) return null;
+        if (model is null) return null;
 
         await Restore(model);
         await _db.SaveChangesAsync();
@@ -47,35 +48,44 @@ public class TwitchAuthService
     {
         try
         {
-            var isValid = await Validate(model.AccessToken);
-            if(!isValid)
+            var validationModel = await Validate(model.AccessToken);
+            var isValid = validationModel is not null;
+            if (!isValid)
             {
                 _logger.LogWarning("Failed to validate token for " + model.Username);
                 isValid = await RefreshToken(model);
-                if(!isValid)
+                if (!isValid)
                     _logger.LogWarning("Failed to refresh token for " + model.Username);
                 else _logger.LogInformation("Tokens for " + model.Username + " successfully refreshed");
             }
             else _logger.LogInformation("Tokens for " + model.Username + " is valid");
-            if(isValid != model.IsValid)
+            if (isValid != model.IsValid)
             {
                 model.IsValid = isValid;
                 AuthenticationChange?.Invoke(model);
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             _logger.LogError(e.Message);
             model.IsValid = false;
         }
     }
 
-    public async Task<bool> Validate(string token)
+    public record ValidateRecord(string client_id, string login, string[] scopes, string user_id, int expires_in);
+    public async Task<ValidateRecord> Validate(string token)
     {
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Authorization", "Bearer " + token);
         var response = await http.GetAsync("https://id.twitch.tv/oauth2/validate");
-        return response.StatusCode == System.Net.HttpStatusCode.OK;
+
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            return System.Text.Json.JsonSerializer.Deserialize<ValidateRecord>(json);
+        }
+        else
+            return null;
     }
 
     public async Task<bool> SignIn(string redirecturi, string code)
@@ -96,15 +106,15 @@ public class TwitchAuthService
         {
             var json = await response.Content.ReadAsStringAsync();
             var obj = JsonConvert.DeserializeObject<JObject>(json);
-            
+
             var accessToken = obj.Value<string>("access_token");
             var refreshToken = obj.Value<string>("refresh_token");
 
             var user = await _api.GetUser(accessToken);
-            if(user is null) return false;
+            if (user is null) return false;
 
             var model = await _db.TwitchAuth.FirstOrDefaultAsync(m => m.UserId == user.id);
-            if(model is null)
+            if (model is null)
             {
                 model = new()
                 {

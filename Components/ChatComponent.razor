@@ -5,7 +5,7 @@
         {
             int _i = i;
 
-            <ChatMessageComponent Message='@_messages[_i]' IsLast='@(_i == _messages.Count - 1)' />
+            <ChatMessageComponent @key=@_i Message=@_messages[_i] IsLast=@(_i == _messages.Count - 1) />
         }
     </CascadingValue>
 </div>
