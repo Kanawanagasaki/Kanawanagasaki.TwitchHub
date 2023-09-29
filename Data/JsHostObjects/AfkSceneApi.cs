@@ -1,38 +1,39 @@
+namespace Kanawanagasaki.TwitchHub.Data.JsHostObjects;
+
+using Microsoft.ClearScript;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Kanawanagasaki.TwitchHub.Data.JsHostObjects;
-
 public class AfkSceneApi : IDisposable
 {
-    private const string DEFAULT_INIT_CODE = @"(scene) => {
-        scene.bg = '#e73232';
-        for (let i = 0; i < scene.symbols.length; i++) {
-            let l = scene.symbols[i];
+    private const string DEFAULT_INIT_CODE = @"(s) => {
+        s.bg = '#e73232';
+        for (let i = 0; i < s.symbols.length; i++) {
+            let l = s.symbols[i];
             l.size = 72;
-            l.x = (-(scene.symbols.length * 36) / 2 + 18) + i * 36;
+            l.x = (-(s.symbols.length * 36) / 2 + 18) + i * 36;
             l.y = -250;
             l.shadow = '1px 1px 2px black';
         }
     }";
-    private const string DEFAULT_TICK_CODE = @"(scene, time) => {
-        let x = (time/2)%200, y = (time/4) % 200;
+    private const string DEFAULT_TICK_CODE = @"(s, cs) => {
+        let x = (cs/2)%200, y = (cs/4) % 200;
         let o=(z,w)=>`conic-gradient(#0000 25%, #00000080 25%, #0000 30%, #0000 70%, #00000080 75%, #0000 75%) ${z}px ${w}px / 200px 200px`;
         let p=(z,w,a)=>`conic-gradient(from ${a}deg at 50% 50%, #ff4545 0%, 25%, #0000 25%) ${z}px ${w}px / 200px 200px repeat repeat`;
-        scene.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#e73232`;
+        s.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#e73232`;
     }";
-    private const string DEFAULT_SYMBOL_TICK_CODE = @"(symbol, index, count, time) =>
+    private const string DEFAULT_SYMBOL_TICK_CODE = @"(s, i, c, cs) =>
     {
         let tt = [140, 50, .7, .95];
-        let t = ((time + (1 - index / count) * tt[1]) % tt[0]) / tt[0];
+        let t = ((cs + (1 - i / c) * tt[1]) % tt[0]) / tt[0];
         if(t < tt[2])
-            symbol.y = 0;
+            s.y = 0;
         else if(t < tt[3])
-            symbol.y = Math.sin((t - tt[2]) * (1 / (tt[3] - tt[2])) * Math.PI / 2) * -40;
+            s.y = Math.sin((t - tt[2]) * (1 / (tt[3] - tt[2])) * Math.PI / 2) * -40;
         else
-            symbol.y = -40 * (1 - (t - tt[3]) * (1 / (1 - tt[3])));
-        symbol.y -= 250;
+            s.y = -40 * (1 - (t - tt[3]) * (1 / (1 - tt[3])));
+        s.y -= 250;
     }";
 
     internal event Action OnCodeChange;
@@ -53,7 +54,7 @@ public class AfkSceneApi : IDisposable
         _channel = channel;
 
         var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _channel.ToLower());
-        if(model is null) resetToDefault();
+        if (model is null) resetToDefault();
         else
         {
             initCode = model.InitCode;
@@ -73,7 +74,7 @@ public class AfkSceneApi : IDisposable
 
     public void onInit(object callback)
     {
-        if (callback.GetType().Name != "V8ScriptItem") return;
+        if (callback is not ScriptObject) return;
         initCode = ParseCode(nameof(onInit));
         if (initCode is not null)
         {
@@ -91,7 +92,7 @@ public class AfkSceneApi : IDisposable
 
     public void onTick(object callback)
     {
-        if (callback.GetType().Name != "V8ScriptItem") return;
+        if (callback is not ScriptObject) return;
         tickCode = ParseCode(nameof(onTick));
         if (tickCode is not null)
         {
@@ -109,7 +110,7 @@ public class AfkSceneApi : IDisposable
 
     public void onSymbolTick(object callback)
     {
-        if (callback.GetType().Name != "V8ScriptItem") return;
+        if (callback is not ScriptObject) return;
         symbolTickCode = ParseCode(nameof(onSymbolTick));
         if (symbolTickCode is not null)
         {
@@ -172,7 +173,7 @@ public class AfkSceneApi : IDisposable
     private void Save()
     {
         var model = _db.JsAfkCodes.FirstOrDefault(m => m.Channel.ToLower() == _channel.ToLower());
-        if(model is null)
+        if (model is null)
         {
             model = new()
             {
@@ -192,6 +193,8 @@ public class AfkSceneApi : IDisposable
         _db.SaveChanges();
     }
 
+    public string toString()
+        => ToString();
     public override string ToString()
         => "{ "
             + "initCode: string, "
@@ -205,7 +208,7 @@ public class AfkSceneApi : IDisposable
 
     public void Dispose()
     {
-        if(_db is not null)
+        if (_db is not null)
             _db.Dispose();
     }
 }

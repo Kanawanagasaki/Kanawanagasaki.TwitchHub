@@ -29,6 +29,8 @@ public class JsCommand : ACommand
             var logs = chat.Js.FlushLogs();
             if(!string.IsNullOrWhiteSpace(logs))
             {
+                if(logs.Length > 450)
+                    logs = logs.Substring(0, 450) + "...";
                 chatMessage.WithCustomContent(new OutputContent(logs));
                 chat.Client.SendMessage(chatMessage.Original.Channel, logs);
             }

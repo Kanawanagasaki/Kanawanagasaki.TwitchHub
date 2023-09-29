@@ -12,6 +12,8 @@ public class StreamApi
         afk = new AfkSceneApi(db, engine, channel);
     }
 
+    public string toString()
+        => ToString();
     public override string ToString()
         => $@"{{ afk: AfkSceneApi }}";
 }
