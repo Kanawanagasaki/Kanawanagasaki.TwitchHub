@@ -101,7 +101,7 @@ public class TtsService : BackgroundService
                         {
                             if (_currentItem is null)
                                 waveOut.Stop();
-                            await Task.Delay(200);
+                            await Task.Delay(200, cancellation);
                         }
                     }
                     else _logger.LogWarning($"Failed to fetch audio file for tts: {(int)response.StatusCode} {response.StatusCode}");

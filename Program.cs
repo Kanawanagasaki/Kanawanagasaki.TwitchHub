@@ -2,6 +2,9 @@ using System.Globalization;
 using Kanawanagasaki.TwitchHub.Services;
 using Kanawanagasaki.TwitchHub;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
+
+Console.OutputEncoding = Encoding.UTF8;
 
 CultureInfo ci = new CultureInfo("ja-JP");
 CultureInfo.DefaultThreadCurrentCulture = ci;
@@ -28,6 +31,7 @@ builder.Services.AddScoped<TwitchChatMessagesService>();
 builder.Services.AddSingleton<JsEnginesService>();
 builder.Services.AddSingleton<TtsService>();
 builder.Services.AddSingleton<TwitchChatService>();
+builder.Services.AddSingleton<LlamaService>();
 
 builder.Services.AddHostedService(sp => sp.GetService<TtsService>());
 

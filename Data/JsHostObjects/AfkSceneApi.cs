@@ -20,8 +20,8 @@ public class AfkSceneApi : IDisposable
     private const string DEFAULT_TICK_CODE = @"(s, cs) => {
         let x = (cs/2)%200, y = (cs/4) % 200;
         let o=(z,w)=>`conic-gradient(#0000 25%, #00000080 25%, #0000 30%, #0000 70%, #00000080 75%, #0000 75%) ${z}px ${w}px / 200px 200px`;
-        let p=(z,w,a)=>`conic-gradient(from ${a}deg at 50% 50%, #ff4545 0%, 25%, #0000 25%) ${z}px ${w}px / 200px 200px repeat repeat`;
-        s.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#e73232`;
+        let p=(z,w,a)=>`conic-gradient(from ${a}deg at 50% 50%, #3f3f3f 0%, 25%, #0000 25%) ${z}px ${w}px / 200px 200px repeat repeat`;
+        s.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#333333`;
     }";
     private const string DEFAULT_SYMBOL_TICK_CODE = @"(s, i, c, cs) =>
     {

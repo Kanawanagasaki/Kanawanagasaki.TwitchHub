@@ -49,7 +49,7 @@ public partial class Auth : ComponentBase
             { "client_id", Conf["Twitch:ClientId"] },
             { "redirect_uri", $"{uri.Scheme}://{uri.Host}:{uri.Port}/twitchauthresponse" },
             { "response_type", "code" },
-            { "scope", "chat:read chat:edit channel:moderate whispers:read whispers:edit" }
+            { "scope", "chat:read chat:edit channel:moderate whispers:read whispers:edit moderator:manage:banned_users" }
         };
         string queryStr = "?" + string.Join("&", query.Select(item => HttpUtility.UrlEncode(item.Key) + "=" + HttpUtility.UrlEncode(item.Value)));
         NavMgr.NavigateTo("https://id.twitch.tv/oauth2/authorize" + queryStr);

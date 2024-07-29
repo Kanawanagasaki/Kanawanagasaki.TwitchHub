@@ -2,6 +2,7 @@ namespace Kanawanagasaki.TwitchHub.Services;
 
 using System.Collections.Concurrent;
 using System.Threading;
+using Microsoft.ClearScript;
 using Newtonsoft.Json;
 
 public class TwitchApiService
@@ -19,7 +20,7 @@ public class TwitchApiService
         http.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
         var response = await http.GetAsync("https://api.twitch.tv/helix/users");
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             var obj = JsonConvert.DeserializeObject<TwitchDataResponse<TwitchGetUsersResponse>>(json);
@@ -31,14 +32,14 @@ public class TwitchApiService
     private ConcurrentDictionary<string, TwitchGetUsersResponse> _getUserByIdCache = new();
     public async Task<TwitchGetUsersResponse> GetUser(string accessToken, string userid, bool ignoreCache = false)
     {
-        if(!ignoreCache && _getUserByIdCache.TryGetValue(userid, out var cachedUser))
+        if (!ignoreCache && _getUserByIdCache.TryGetValue(userid, out var cachedUser))
             return cachedUser;
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
         var response = await http.GetAsync("https://api.twitch.tv/helix/users?id=" + userid);
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             var obj = JsonConvert.DeserializeObject<TwitchDataResponse<TwitchGetUsersResponse>>(json);
@@ -50,14 +51,14 @@ public class TwitchApiService
     }
     public async Task<TwitchGetUsersResponse> GetUserByLogin(string accessToken, string login, bool ignoreCache = false)
     {
-        if(!ignoreCache && _getUserByIdCache.TryGetValue(login, out var cachedUser))
+        if (!ignoreCache && _getUserByIdCache.TryGetValue(login, out var cachedUser))
             return cachedUser;
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
         var response = await http.GetAsync("https://api.twitch.tv/helix/users?login=" + login);
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             var obj = JsonConvert.DeserializeObject<TwitchDataResponse<TwitchGetUsersResponse>>(json);
@@ -67,7 +68,7 @@ public class TwitchApiService
         }
         else return null;
     }
-    
+
     public async Task<TwitchDataResponse<TwitchGetChatBadgeResponse>> GetChannelBadges(string accessToken, string channelid)
     {
         var url = $"https://api.twitch.tv/helix/chat/badges?broadcaster_id={channelid}";
@@ -75,7 +76,7 @@ public class TwitchApiService
         http.DefaultRequestHeaders.Add("Authorization", "Bearer " + accessToken);
         http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
         var response = await http.GetAsync(url);
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<TwitchDataResponse<TwitchGetChatBadgeResponse>>(json);
@@ -83,17 +84,17 @@ public class TwitchApiService
         else return null;
     }
 
-    private TwitchDataResponse<TwitchGetChatBadgeResponse> _getGlobalBadgesCache = null; 
+    private TwitchDataResponse<TwitchGetChatBadgeResponse> _getGlobalBadgesCache = null;
     public async Task<TwitchDataResponse<TwitchGetChatBadgeResponse>> GetGlobalBadges(string accessToken)
     {
-        if(_getGlobalBadgesCache is not null)
+        if (_getGlobalBadgesCache is not null)
             return _getGlobalBadgesCache;
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Authorization", "Bearer " + accessToken);
         http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
         var response = await http.GetAsync("https://api.twitch.tv/helix/chat/badges/global");
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             _getGlobalBadgesCache = JsonConvert.DeserializeObject<TwitchDataResponse<TwitchGetChatBadgeResponse>>(json);
@@ -107,14 +108,32 @@ public class TwitchApiService
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
-        var response = await http.GetAsync("https://api.twitch.tv/helix/users/follows?to_id=" + userid);
-        if(response.StatusCode == System.Net.HttpStatusCode.OK)
+        using var response = await http.GetAsync("https://api.twitch.tv/helix/users/follows?to_id=" + userid);
+        if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
             var data = JsonConvert.DeserializeObject<TwitchPaginatedDataResponse<object>>(json);
             return data.total;
         }
         else return -1;
+    }
+
+    public async Task<bool> Timeout(string accessToken, string broadcasterId, string moderatorId, string viewerId, TimeSpan duration, string reason)
+    {
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+        http.DefaultRequestHeaders.Add("Client-Id", _conf["Twitch:ClientId"]);
+        using var response = await http.PostAsJsonAsync($"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={broadcasterId}&moderator_id={moderatorId}",
+            new
+            {
+                data = new
+                {
+                    user_id = viewerId,
+                    duration = (int)duration.TotalSeconds,
+                    reason
+                }
+            });
+        return response.IsSuccessStatusCode;
     }
 }
 

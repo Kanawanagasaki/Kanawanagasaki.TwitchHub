@@ -17,8 +17,6 @@ public partial class ChatComponent : ComponentBase, IDisposable
     [Inject]
     public TwitchChatMessagesService TwChat { get; set; }
     [Inject]
-    public EmotesService Emotes { get; set; }
-    [Inject]
     public IJSRuntime Js { get; set; }
     [Inject]
     public ILogger<ChatComponent> Logger { get; set; }
@@ -34,8 +32,6 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
     [Parameter]
     public TwitchAuthModel AuthModel { get; set; }
-
-    public BttvEmote[] BttvEmotes { get; private set; } = Array.Empty<BttvEmote>();
 
     public Dictionary<string, string> Badges = new();
 
@@ -82,19 +78,6 @@ public partial class ChatComponent : ComponentBase, IDisposable
                 var version = badge.versions.OrderByDescending(v => int.TryParse(v.id, out var id) ? id : 0).First();
                 Badges[badge.set_id] = version.image_url_1x;
             }
-
-            var res = await Emotes.GetChannelBttv(_channelObj.id);
-            if (res is not null)
-            {
-                if (res.channelEmotes is not null && res.sharedEmotes is not null)
-                    BttvEmotes = res.channelEmotes.Concat(res.sharedEmotes).ToArray();
-                else if (res.channelEmotes is not null)
-                    BttvEmotes = res.channelEmotes;
-                else if (res.sharedEmotes is not null)
-                    BttvEmotes = res.sharedEmotes;
-                else BttvEmotes = Array.Empty<BttvEmote>();
-            }
-            else BttvEmotes = Array.Empty<BttvEmote>();
         }
 
         _channelCache = Channel;
@@ -113,9 +96,6 @@ public partial class ChatComponent : ComponentBase, IDisposable
                 hsl.l += (1 - hsl.l) / 4;
                 message.SetColor($"hsl({hsl.h}, {(int)(hsl.s * 100)}%, {(int)(hsl.l * 100)}%)");
             }
-
-            var globalBttv = await Emotes.GetGlobalBttv() ?? Array.Empty<BttvEmote>();
-            message.ParseEmotes(globalBttv.Concat(BttvEmotes).ToArray());
 
             var user = await TwApi.GetUser(AuthModel.AccessToken, message.Original.UserId);
             if (user is null)

@@ -16,7 +16,7 @@ public class CommandsService
     private Dictionary<string, string> _externalCommands = new();
     public IReadOnlyDictionary<string, string> ExternalCommands => _externalCommands;
 
-    public CommandsService(SQLiteContext db, TtsService tts, ILogger<CommandsService> logger)
+    public CommandsService(SQLiteContext db, TtsService tts, LlamaService llama, ILogger<CommandsService> logger)
     {
         _db = db;
         _logger = logger;
@@ -29,6 +29,7 @@ public class CommandsService
         RegisterCommand(new JsCommand());
         RegisterCommand(new GetVoicesCommand(tts));
         RegisterCommand(new SetVoiceCommand(db, tts));
+        RegisterCommand(new LlamaResetCommand(llama));
 
         _externalCommands.Add("drop", "Drop from the sky!");
     }
@@ -36,7 +37,7 @@ public class CommandsService
     public async Task AddTextCommand(string commandName, string text)
     {
         var model = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name.ToLower() == commandName.ToLower());
-        if(model is null)
+        if (model is null)
         {
             model = new()
             {
@@ -52,7 +53,7 @@ public class CommandsService
     public async Task<bool> RemoveTextCommand(string commandName)
     {
         var model = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name.ToLower() == commandName.ToLower());
-        if(model is not null)
+        if (model is not null)
         {
             _db.TextCommands.Remove(model);
             await _db.SaveChangesAsync();
@@ -72,14 +73,14 @@ public class CommandsService
 
         try
         {
-            if(message.Message.StartsWith("!"))
+            if (message.Message.StartsWith("!"))
             {
                 string[] split = message.Message.Substring(1).Split(" ");
                 string commandName = split[0];
                 string[] args = split.Skip(1).ToArray();
-                if(_commands.ContainsKey(commandName))
+                if (_commands.ContainsKey(commandName))
                 {
-                    if(_commands[commandName].IsAuthorizedToExecute(message))
+                    if (_commands[commandName].IsAuthorizedToExecute(message))
                     {
                         processedMessage = processedMessage.AsCommand(commandName, args);
                         processedMessage = _commands[commandName].Execute(processedMessage, chat);
@@ -90,12 +91,12 @@ public class CommandsService
                 else
                 {
                     var command = await _db.TextCommands.FirstOrDefaultAsync(m => m.Name == commandName.ToLower());
-                    if(command is not null)
+                    if (command is not null)
                         processedMessage = processedMessage.WithReply(command.Text);
                 }
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             _logger.LogError(e.Message);
         }

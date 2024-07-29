@@ -8,6 +8,8 @@ using Kanawanagasaki.TwitchHub.Data;
 using Kanawanagasaki.TwitchHub.Models;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
+using TwitchLib.Client.Extensions;
+using TwitchLib.Communication.Events;
 
 public class TwitchChatMessagesService : IDisposable
 {
@@ -32,6 +34,8 @@ public class TwitchChatMessagesService : IDisposable
     private ILogger<TwitchChatService> _logger;
     private TtsService _tts;
     private JsEnginesService _jsEngines;
+    private LlamaService _llama;
+    private EmotesService _emotes;
 
     private TwitchAuthModel _authModel;
 
@@ -43,13 +47,17 @@ public class TwitchChatMessagesService : IDisposable
         CommandsService commands,
         ILogger<TwitchChatService> logger,
         TtsService tts,
-        JsEnginesService jsEngines)
+        JsEnginesService jsEngines,
+        LlamaService llama,
+        EmotesService emotes)
     {
         _chat = chat;
         _commands = commands;
         _logger = logger;
         _tts = tts;
         _jsEngines = jsEngines;
+        _llama = llama;
+        _emotes = emotes;
     }
 
     public void Connect(TwitchAuthModel authModel, string channel)
@@ -63,9 +71,15 @@ public class TwitchChatMessagesService : IDisposable
         Client.OnMessageReceived += MessageReceived;
         Client.OnMessageCleared += MessageDeleted;
         Client.OnUserTimedout += UserTimeout;
-        Client.OnUserBanned +=  UserBanned;
+        Client.OnUserBanned += UserBanned;
+        Client.OnError += ClientError;
 
         Js = _jsEngines.GetEngine(channel);
+    }
+
+    public void SendMessage(string channel, string message)
+    {
+        Client.SendMessage(channel, message);
     }
 
     public void Disconnect()
@@ -192,7 +206,16 @@ public class TwitchChatMessagesService : IDisposable
         if (res.ShouldReply)
             Client.SendMessage(ev.ChatMessage.Channel, res.Reply);
 
+        var globalEmotes = await _emotes.GetGlobal();
+        var channelEmotes = await _emotes.GetChannel(ev.ChatMessage.RoomId, ev.ChatMessage.Channel);
+        var allEmotes = new Dictionary<string, ThirdPartyEmote>();
+        foreach (var (k, v) in globalEmotes)
+            allEmotes[k] = v;
+        foreach (var (k, v) in channelEmotes)
+            allEmotes[k] = v;
+        res.ParseEmotes(allEmotes);
         OnMessage?.Invoke(res);
+        await _llama.OnTwitchChatMessage(this, res);
     }
 
     private void MessageDeleted(object sernder, OnMessageClearedArgs ev)
@@ -211,6 +234,11 @@ public class TwitchChatMessagesService : IDisposable
     {
         _tts.DeleteByUsername(ev.UserBan.Username);
         OnUserSuspend?.Invoke(ev.UserBan.Username);
+    }
+
+    private void ClientError(object sender, OnErrorEventArgs ev)
+    {
+        _logger.LogError(ev.Exception.Message);
     }
 
     public void Dispose()
