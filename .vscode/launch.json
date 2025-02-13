@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/net7.0/Kanawanagasaki.TwitchHub.dll",
+            "program": "${workspaceFolder}/bin/Debug/net7.0/Kanawanagasaki.TwitchHub.exe",
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
@@ -22,7 +22,8 @@
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
-            }
+            },
+            "console": "integratedTerminal"
         },
         {
             "name": ".NET Core Attach",

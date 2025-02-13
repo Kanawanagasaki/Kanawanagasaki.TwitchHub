@@ -9,24 +9,24 @@ using Microsoft.JSInterop;
 public partial class ChatMessageComponent : ComponentBase, IDisposable
 {
     [Inject]
-    public TwitchApiService TwApi { get; set; }
+    public required TwitchApiService TwApi { get; set; }
     [Inject]
-    public EmotesService Emotes { get; set; }
+    public required EmotesService Emotes { get; set; }
     [Inject]
-    public IJSRuntime Js { get; set; }
+    public required IJSRuntime Js { get; set; }
     [Inject]
-    public ILogger<ChatMessageComponent> Logger { get; set; }
+    public required ILogger<ChatMessageComponent> Logger { get; set; }
 
     [Parameter]
-    public ProcessedChatMessage Message { get; set; }
-    private ProcessedChatMessage _cachedMessage = null;
+    public ProcessedChatMessage? Message { get; set; }
+    private ProcessedChatMessage? _cachedMessage = null;
 
     [Parameter]
     public bool IsLast { get; set; }
     private bool _animateNew = false;
 
     [CascadingParameter]
-    public ChatComponent Parent { get; set; }
+    public ChatComponent? Parent { get; set; }
 
     private ElementReference? _ref { get; set; }
     private int _width = 0;

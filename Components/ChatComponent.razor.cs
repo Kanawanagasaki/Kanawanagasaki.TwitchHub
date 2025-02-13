@@ -11,32 +11,32 @@ using TwitchLib.PubSub;
 public partial class ChatComponent : ComponentBase, IDisposable
 {
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public TwitchApiService TwApi { get; set; }
+    public required TwitchApiService TwApi { get; set; }
     [Inject]
-    public TwitchChatMessagesService TwChat { get; set; }
+    public required TwitchChatMessagesService TwChat { get; set; }
     [Inject]
-    public IJSRuntime Js { get; set; }
+    public required IJSRuntime Js { get; set; }
     [Inject]
-    public ILogger<ChatComponent> Logger { get; set; }
+    public required ILogger<ChatComponent> Logger { get; set; }
     [Inject]
-    public HelperService Helper { get; set; }
+    public required HelperService Helper { get; set; }
     [Inject]
-    public SQLiteContext Db { get; set; }
+    public required SQLiteContext Db { get; set; }
 
     [Parameter]
-    public string Channel { get; set; }
+    public string? Channel { get; set; }
     private string _channelCache = "";
-    private TwitchGetUsersResponse _channelObj;
+    private TwitchGetUsersResponse? _channelObj;
 
     [Parameter]
-    public TwitchAuthModel AuthModel { get; set; }
+    public TwitchAuthModel? AuthModel { get; set; }
 
-    public Dictionary<string, string> Badges = new();
+    public Dictionary<string, string> Badges = [];
 
-    private List<ProcessedChatMessage> _messages = new();
-    private List<ChatMessageComponent> _components = new();
+    private readonly List<ProcessedChatMessage> _messages = [];
+    private readonly List<ChatMessageComponent> _components = [];
 
     protected override void OnInitialized()
     {
@@ -56,7 +56,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
         if (Channel == _channelCache) return;
 
-        Logger.LogDebug($"Connecting to {Channel} with {AuthModel.Username} account");
+        Logger.LogDebug("Connecting to {Channel} with {AuthModel.Username} account", Channel, AuthModel.Username);
         TwChat.Connect(AuthModel, Channel);
 
         var globalBadges = await TwApi.GetGlobalBadges(AuthModel.AccessToken);
@@ -73,7 +73,7 @@ public partial class ChatComponent : ComponentBase, IDisposable
         if (_channelObj is not null)
         {
             var channelBadges = await TwApi.GetChannelBadges(AuthModel.AccessToken, _channelObj.id);
-            foreach (var badge in channelBadges.data)
+            foreach (var badge in channelBadges?.data ?? [])
             {
                 var version = badge.versions.OrderByDescending(v => int.TryParse(v.id, out var id) ? id : 0).First();
                 Badges[badge.set_id] = version.image_url_1x;
@@ -88,6 +88,8 @@ public partial class ChatComponent : ComponentBase, IDisposable
         InvokeAsync(async () =>
         {
             if (!message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
+                return;
+            if (AuthModel is null)
                 return;
 
             if (!string.IsNullOrWhiteSpace(message.Original.ColorHex))
@@ -173,7 +175,8 @@ public partial class ChatComponent : ComponentBase, IDisposable
 
     public void Dispose()
     {
-        TwChat.Disconnect();
+        if (AuthModel is not null && Channel is not null)
+            TwChat.Disconnect(AuthModel, Channel);
         TwChat.OnMessage -= OnMessage;
         TwChat.OnMessageDelete -= OnMessageDelete;
         TwChat.OnUserSuspend -= OnUserSuspend;

@@ -9,8 +9,8 @@ public class JsAfkCodeModel
     [Key]
     public Guid Uuid { get; set; }
 
-    public string Channel { get; set; }
-    public string InitCode { get; set; }
-    public string TickCode { get; set; }
-    public string SymbolTickCode { get; set; }
+    public required string Channel { get; set; }
+    public required string InitCode { get; set; }
+    public required string TickCode { get; set; }
+    public required string SymbolTickCode { get; set; }
 }

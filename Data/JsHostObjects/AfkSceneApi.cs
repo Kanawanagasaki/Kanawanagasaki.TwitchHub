@@ -1,14 +1,28 @@
 namespace Kanawanagasaki.TwitchHub.Data.JsHostObjects;
 
 using Microsoft.ClearScript;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 public class AfkSceneApi : IDisposable
 {
+    // private const string DEFAULT_INIT_CODE = @"(s) => {
+    //     s.bg = '#e73232';
+    //     for (let i = 0; i < s.symbols.length; i++) {
+    //         let l = s.symbols[i];
+    //         l.size = 72;
+    //         l.x = (-(s.symbols.length * 36) / 2 + 18) + i * 36;
+    //         l.y = -250;
+    //         l.shadow = '1px 1px 2px black';
+    //     }
+    // }";
+    // private const string DEFAULT_TICK_CODE = @"(s, cs) => {
+    //     let x = (cs/2)%200, y = (cs/4) % 200;
+    //     let o=(z,w)=>`conic-gradient(#0000 25%, #00000080 25%, #0000 30%, #0000 70%, #00000080 75%, #0000 75%) ${z}px ${w}px / 200px 200px`;
+    //     let p=(z,w,a)=>`conic-gradient(from ${a}deg at 50% 50%, #3f3f3f 0%, 25%, #0000 25%) ${z}px ${w}px / 200px 200px repeat repeat`;
+    //     s.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#333333`;
+    // }";
+
     private const string DEFAULT_INIT_CODE = @"(s) => {
-        s.bg = '#e73232';
+        s.bg = '#0000';
         for (let i = 0; i < s.symbols.length; i++) {
             let l = s.symbols[i];
             l.size = 72;
@@ -18,10 +32,7 @@ public class AfkSceneApi : IDisposable
         }
     }";
     private const string DEFAULT_TICK_CODE = @"(s, cs) => {
-        let x = (cs/2)%200, y = (cs/4) % 200;
-        let o=(z,w)=>`conic-gradient(#0000 25%, #00000080 25%, #0000 30%, #0000 70%, #00000080 75%, #0000 75%) ${z}px ${w}px / 200px 200px`;
-        let p=(z,w,a)=>`conic-gradient(from ${a}deg at 50% 50%, #3f3f3f 0%, 25%, #0000 25%) ${z}px ${w}px / 200px 200px repeat repeat`;
-        s.bg=`${o(x,y)},${o(200-x,y+100)},${p(x,y,0)},${p(200-x,y,180)},#333333`;
+        s.bg = '#0000';
     }";
     private const string DEFAULT_SYMBOL_TICK_CODE = @"(s, i, c, cs) =>
     {
@@ -36,11 +47,11 @@ public class AfkSceneApi : IDisposable
         s.y -= 250;
     }";
 
-    internal event Action OnCodeChange;
+    internal event Action? OnCodeChange;
 
-    public string initCode { get; private set; } = DEFAULT_INIT_CODE;
-    public string tickCode { get; private set; } = DEFAULT_TICK_CODE;
-    public string symbolTickCode { get; private set; } = DEFAULT_SYMBOL_TICK_CODE;
+    public string? initCode { get; private set; } = DEFAULT_INIT_CODE;
+    public string? tickCode { get; private set; } = DEFAULT_TICK_CODE;
+    public string? symbolTickCode { get; private set; } = DEFAULT_SYMBOL_TICK_CODE;
 
     private JsEngine _engine;
     private SQLiteContext _db;
@@ -83,7 +94,7 @@ public class AfkSceneApi : IDisposable
         }
     }
 
-    internal void SetOnInit(string code)
+    internal void SetOnInit(string? code)
     {
         initCode = code;
         Save();
@@ -101,7 +112,7 @@ public class AfkSceneApi : IDisposable
         }
     }
 
-    internal void SetOnTick(string code)
+    internal void SetOnTick(string? code)
     {
         tickCode = code;
         Save();
@@ -119,15 +130,18 @@ public class AfkSceneApi : IDisposable
         }
     }
 
-    internal void SetOnSymbolTick(string code)
+    internal void SetOnSymbolTick(string? code)
     {
         symbolTickCode = code;
         Save();
         OnCodeChange?.Invoke();
     }
 
-    private string ParseCode(string methodName)
+    private string? ParseCode(string methodName)
     {
+        if (_engine.LastCodeExecuted is null)
+            return null;
+
         var methodIndex = _engine.LastCodeExecuted.LastIndexOf(methodName);
         if (methodIndex < 0) return null;
 
@@ -178,17 +192,17 @@ public class AfkSceneApi : IDisposable
             model = new()
             {
                 Channel = _channel,
-                InitCode = initCode,
-                TickCode = tickCode,
-                SymbolTickCode = symbolTickCode
+                InitCode = initCode ?? DEFAULT_INIT_CODE,
+                TickCode = tickCode ?? DEFAULT_TICK_CODE,
+                SymbolTickCode = symbolTickCode ?? DEFAULT_SYMBOL_TICK_CODE
             };
             _db.JsAfkCodes.Add(model);
         }
         else
         {
-            model.InitCode = initCode;
-            model.TickCode = tickCode;
-            model.SymbolTickCode = symbolTickCode;
+            model.InitCode = initCode ?? DEFAULT_INIT_CODE;
+            model.TickCode = tickCode ?? DEFAULT_TICK_CODE;
+            model.SymbolTickCode = symbolTickCode ?? DEFAULT_SYMBOL_TICK_CODE;
         }
         _db.SaveChanges();
     }

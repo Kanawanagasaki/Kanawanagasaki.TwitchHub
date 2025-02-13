@@ -5,32 +5,32 @@ namespace Kanawanagasaki.TwitchHub.Services;
 
 public class JsEnginesService : IDisposable
 {
-    private SQLiteContext _db = new();
-    private Dictionary<string, JsEngine> _engines = new();
+    private readonly IServiceScope _scope;
+    private readonly SQLiteContext _db;
+
+    private ConcurrentDictionary<string, JsEngine> _engines = new();
+
+    public JsEnginesService(IServiceScopeFactory serviceScopeFactory)
+    {
+        _scope = serviceScopeFactory.CreateScope();
+        _db = _scope.ServiceProvider.GetRequiredService<SQLiteContext>();
+    }
 
     public JsEngine GetEngine(string channel)
     {
-        JsEngine engine;
-        lock(_engines) lock(_db)
-        {
-            if(_engines.ContainsKey(channel))
-                engine = _engines[channel];
-            else
-            {
-                engine = new JsEngine(_db, channel);
-                _engines[channel] = engine;
-            }
-        }
+        JsEngine? engine;
+        if (_engines.TryGetValue(channel, out engine))
+            return engine;
+
+        engine = new JsEngine(_db, channel);
+        _engines.AddOrUpdate(channel, engine, (_, _) => engine);
         return engine;
     }
 
     public void Dispose()
     {
-        lock(_engines)
-        {
-            foreach(var kv in _engines)
-                kv.Value.Dispose();
-            _engines.Clear();
-        }
+        foreach (var kv in _engines.Values)
+            kv.Dispose();
+        _engines.Clear();
     }
 }

@@ -1,33 +1,37 @@
 namespace Kanawanagasaki.TwitchHub.Data;
 
+using Kanawanagasaki.TwitchHub.Models;
 using Kanawanagasaki.TwitchHub.Services;
 using Microsoft.AspNetCore.Routing.Tree;
 using TwitchLib.Client.Models;
+using System.Globalization;
 
 public class ProcessedChatMessage
 {
+    public TwitchAuthModel BotAuth { get; private set; }
     public ChatMessage Original { get; private set; }
     public RenderFragments Fragments { get; private set; }
 
-    public List<MessagePart> ParsedMessage { get; private set; } = new();
+    public List<MessagePart> ParsedMessage { get; private set; } = [];
 
     public bool IsCommand { get; private set; } = false;
-    public string CommandName { get; private set; }
-    public string[] CommandArgs { get; private set; } = Array.Empty<string>();
+    public string? CommandName { get; private set; }
+    public string[] CommandArgs { get; private set; } = [];
     public bool ShouldReply { get; private set; } = false;
-    public string Reply { get; private set; }
+    public string? Reply { get; private set; }
 
-    public List<object> CustomContent { get; private set; } = new();
+    public List<object> CustomContent { get; private set; } = [];
 
-    public string ImageUrl { get; private set; }
+    public string? ImageUrl { get; private set; }
 
-    public string YoutubeVideoId { get; private set; }
+    public string? YoutubeVideoId { get; private set; }
 
-    public TwitchGetUsersResponse Sender { get; private set; }
-    public string Color { get; private set; } = null;
+    public TwitchGetUsersResponse? Sender { get; private set; }
+    public string? Color { get; private set; } = null;
 
-    public ProcessedChatMessage(ChatMessage originalMessage)
+    public ProcessedChatMessage(TwitchAuthModel botAuth, ChatMessage originalMessage)
     {
+        BotAuth = botAuth;
         Original = originalMessage;
         Fragments = RenderFragments.Message | RenderFragments.OriginalMessage;
     }
@@ -91,7 +95,7 @@ public class ProcessedChatMessage
         Color = color;
     }
 
-    public void SetUser(TwitchGetUsersResponse user)
+    public void SetUser(TwitchGetUsersResponse? user)
     {
         Sender = user;
     }
@@ -100,15 +104,23 @@ public class ProcessedChatMessage
     {
         var parts = new List<string>();
         var emoteUrls = new List<(string code, string url)>();
-
-        int lastIndex = 0;
-        foreach (var emote in Original.EmoteSet.Emotes.OrderBy(e => e.StartIndex))
+        var emotes = Original.EmoteSet.Emotes.OrderBy(x => x.StartIndex);
+        var stringInfo = new StringInfo(Original.Message);
+        int leftIndex = 0;
+        foreach (var emote in emotes)
         {
-            parts.Add(Original.Message.Substring(lastIndex, emote.StartIndex - lastIndex));
+            var leftPart = stringInfo.SubstringByTextElements(leftIndex, emote.StartIndex - leftIndex);
+            parts.Add(leftPart);
             emoteUrls.Add((emote.Name, $"https://static-cdn.jtvnw.net/emoticons/v2/{emote.Id}/default/dark/1.0"));
-            lastIndex = emote.EndIndex + 1;
+            leftIndex = emote.EndIndex + 1;
         }
-        parts.Add(Original.Message.Substring(lastIndex));
+
+        if (leftIndex < stringInfo.LengthInTextElements)
+        {
+            var leftOverPart = stringInfo.SubstringByTextElements(leftIndex);
+            if (0 < leftOverPart.Length)
+                parts.Add(leftOverPart);
+        }
 
         for (int i = 0; i < parts.Count; i++)
         {
@@ -128,14 +140,17 @@ public class ProcessedChatMessage
             }
         }
 
-        ParsedMessage.Clear();
-        for (int i = 0; i < parts.Count; i++)
         {
-            ParsedMessage.Add(new(false, parts[i]));
-            if (i < emoteUrls.Count)
+            ParsedMessage.Clear();
+            int i;
+            for (i = 0; i < parts.Count; i++)
             {
-                ParsedMessage.Add(new(true, emoteUrls[i].code, emoteUrls[i].url));
+                ParsedMessage.Add(new(false, parts[i]));
+                if (i < emoteUrls.Count)
+                    ParsedMessage.Add(new(true, emoteUrls[i].code, emoteUrls[i].url));
             }
+            for (; i < emoteUrls.Count; i++)
+                ParsedMessage.Add(new(true, emoteUrls[i].code, emoteUrls[i].url));
         }
     }
 
@@ -152,5 +167,5 @@ public class ProcessedChatMessage
         Code = 64
     }
 
-    public record MessagePart(bool IsEmote, string Content, string EmoteUrl = null);
+    public record MessagePart(bool IsEmote, string Content, string? EmoteUrl = null);
 }

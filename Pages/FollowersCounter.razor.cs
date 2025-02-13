@@ -8,18 +8,18 @@ using Microsoft.EntityFrameworkCore;
 public partial class FollowersCounter : ComponentBase
 {
     [Inject]
-    public TwitchApiService TwApi { get; set; }
+    public required TwitchApiService TwApi { get; set; }
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public NavigationManager NavMgr { get; set; }
+    public required NavigationManager NavMgr { get; set; }
     [Inject]
-    public SQLiteContext Db { get; set; }
+    public required SQLiteContext Db { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string Channel { get; set; }
-    private TwitchGetUsersResponse _channel;
+    public string? Channel { get; set; }
+    private TwitchGetUsersResponse? _channel;
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -29,24 +29,31 @@ public partial class FollowersCounter : ComponentBase
     {
         TwAuth.AuthenticationChange += model =>
         {
-            if (model.Username.ToLower() != Channel.ToLower()) return;
-                InvokeAsync(async () => await UpdateChannel(model));
+            if (Channel is null)
+                return;
+            if (model.Username.ToLower() != Channel.ToLower())
+                return;
+            InvokeAsync(async () => await UpdateChannel(model));
         };
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrWhiteSpace(Channel)) return;
-        
+        if (string.IsNullOrWhiteSpace(Channel))
+            return;
+
         var model = await Db.TwitchAuth.FirstOrDefaultAsync(m => m.Username.ToLower() == Channel.ToLower());
-        if(model is null) return;
+        if (model is null)
+            return;
         await UpdateChannel(model);
     }
 
     private async Task UpdateChannel(TwitchAuthModel model)
     {
+        if (Channel is null)
+            return;
         _channel = await TwApi.GetUserByLogin(model.AccessToken, Channel);
-        if(_channel is null)
+        if (_channel is null)
         {
             await TwAuth.Restore(model);
             _channel = await TwApi.GetUserByLogin(model.AccessToken, Channel);

@@ -1,19 +1,19 @@
-@if(Message is not null && Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
+@if (Message is not null && Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Message))
 {
     <div class='root @(Message.Sender is null ? "no-user" : "")'
-         style='@(_isAnimAway ? $"margin-top: {-_height}px; transition: margin-top .3s ease;" : "margin-top: 24px");'
-         @ref='_ref'>
+        style='@(_isAnimAway ? $"margin-top: {-_height}px; transition: margin-top .3s ease;" : "margin-top: 24px");'
+    @ref='_ref'>
         <div class='container @(_animateNew ? "new" : "")'
             style='@(!string.IsNullOrWhiteSpace(Message.Color) ? $"box-shadow: 1px 1px 1px {Message.Color};" : "")'>
             <div class='header'>
-                @if(Message.Sender is not null)
+                @if (Message.Sender is not null)
                 {
                     <img class='prof-img' src='@(Message.Sender.profile_image_url)' />
                 }
 
-                @foreach(var badge in Message.Original.Badges)
+                @foreach (var badge in Message.Original.Badges)
                 {
-                    if(Parent.Badges.ContainsKey(badge.Key))
+                    if (Parent is not null && Parent.Badges.ContainsKey(badge.Key))
                     {
                         <img src="@(Parent.Badges[badge.Key])" />
                     }
@@ -25,17 +25,18 @@
                 </span>
             </div>
 
-            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage) ||
-                (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && Message.CustomContent.Any(c => c is string)))
+            @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage) ||
+           (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && Message.CustomContent.Any(c =>
+           c is string)))
             {
                 <div class='body'>
 
-                    @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
+                    @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.OriginalMessage))
                     {
-                        <div>
-                            @foreach(var el in Message.ParsedMessage)
+                        <div class="parsed-message">
+                            @foreach (var el in Message.ParsedMessage)
                             {
-                                if(!el.IsEmote)
+                                if (!el.IsEmote)
                                 {
                                     <span>@(el.Content)</span>
                                 }
@@ -47,11 +48,11 @@
                         </div>
                     }
 
-                    @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
+                    @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent))
                     {
-                        foreach(var customContent in Message.CustomContent)
+                        foreach (var customContent in Message.CustomContent)
                         {
-                            if(customContent is string)
+                            if (customContent is string)
                             {
                                 <div>
                                     <span>
@@ -65,7 +66,7 @@
                 </div>
             }
 
-            @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Image))
+            @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Image))
             {
                 <div class='fragment-image'>
                     <img src='@Message.ImageUrl' />
@@ -74,23 +75,25 @@
 
             @foreach (var customContent in Message.CustomContent)
             {
-                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && customContent is HtmlPreviewCustomContent htmlPreview)
+                @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && customContent is
+               HtmlPreviewCustomContent htmlPreview)
                 {
                     <HtmlPreviewComponent Content='@htmlPreview' />
                 }
 
-                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && customContent is CodeContent codeContent && codeContent.IsFormatted)
+                @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.Code) && customContent is CodeContent
+               codeContent && codeContent.IsFormatted)
                 {
                     <div class='code-wrapper'>
-                        @if(_codeFlag)
+                        @if (_codeFlag)
                         {
                             <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
                                 <pre>
                                     <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
-                                        foreach(var line in codeContent.Lines)
-                                        {
-                                            @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
-                                        }
+                                            foreach (var line in codeContent.Lines ?? [])
+                                            {
+                                                @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
+                                            }
                                     }</code>
                                 </pre>
                             </div>
@@ -100,7 +103,7 @@
                             <div class='code' style='margin-left: @(_isAnimCode ? "0px" : $"-{_codeWidth}px")'>
                                 <pre>
                                     <code class='@(codeContent.HighlighterClass)' @ref='_codeRef'>@{
-                                        foreach(var line in codeContent.Lines)
+                                        foreach (var line in codeContent.Lines ?? [])
                                         {
                                             @(string.Join("", Enumerable.Range(0, line.Indent).Select(_ => "    ")) + line.Text + "\n")
                                         }
@@ -111,7 +114,8 @@
                     </div>
                 }
 
-                @if(Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && customContent is OutputContent output)
+                @if (Message.Fragments.HasFlag(ProcessedChatMessage.RenderFragments.CustomContent) && customContent is
+               OutputContent output)
                 {
                     <div class='output'>
                         Output: <div class='output-data'>@output.Output</div>

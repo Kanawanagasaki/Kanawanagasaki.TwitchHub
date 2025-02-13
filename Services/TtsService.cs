@@ -11,21 +11,16 @@ using NAudio.Wave;
 using System.Collections.Concurrent;
 using TwitchLib.PubSub.Events;
 
-public class TtsService : BackgroundService
+public class TtsService(IConfiguration _conf, ILogger<TtsService> _logger, IServiceScopeFactory _serviceScopeFactory) : BackgroundService
 {
-    private IConfiguration _conf;
-    private IServiceScopeFactory _serviceFactory;
-    private ILogger<TtsService> _logger;
     private List<(string Id, string Username, string Text)> _textToRead = new();
-    private AzureTtsVoiceInfo[] _cachedVoices = null;
-    private AzureTtsVoiceInfo _defaultVoice = null;
+    private AzureTtsVoiceInfo[]? _cachedVoices = null;
 
     private (string Id, string Username, string Text)? _currentItem = null;
 
-    public TtsService(IConfiguration conf, IServiceScopeFactory serviceFactory, ILogger<TtsService> logger)
-        => (_conf, _serviceFactory, _logger) = (conf, serviceFactory, logger);
+    private bool _isEnabled = true;
 
-    protected override async Task ExecuteAsync(CancellationToken cancellation)
+    protected override async Task ExecuteAsync(CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_conf["Azure:Speech:Key1"]))
         {
@@ -40,18 +35,14 @@ public class TtsService : BackgroundService
             return;
         }
 
-        _defaultVoice = voices.FirstOrDefault(v => v.Locale == "en-US");
-        if (_defaultVoice is null)
-            _defaultVoice = voices.First();
-
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _conf["Azure:Speech:Key1"]);
         http.DefaultRequestHeaders.Add("X-Microsoft-OutputFormat", "riff-24khz-16bit-mono-pcm");
         http.DefaultRequestHeaders.Add("User-Agent", _conf["Azure:Speech:AppName"]);
 
-        while (!cancellation.IsCancellationRequested)
+        while (!ct.IsCancellationRequested)
         {
-            if (0 < _textToRead.Count)
+            if (0 < _textToRead.Count && _isEnabled)
             {
                 try
                 {
@@ -61,32 +52,86 @@ public class TtsService : BackgroundService
                         _textToRead.RemoveAt(0);
                     }
 
-                    using var sp = _serviceFactory.CreateScope();
-                    var db = sp.ServiceProvider.GetService<SQLiteContext>();
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    using var db = scope.ServiceProvider.GetRequiredService<SQLiteContext>();
                     var voice = await db.ViewerVoices.FirstOrDefaultAsync(v => v.Username == _currentItem.Value.Username);
-
-                    string ssml = "";
-
-                    if (voice is not null)
+                    if (voice is null)
                     {
-                        ssml = $"""
-                        <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+                        var voiceInfo = voices.Where(v => v.Locale == "en-US").OrderBy(x => Guid.NewGuid()).FirstOrDefault();
+                        if (voiceInfo is null)
+                            voiceInfo = voices.First();
+
+                        voice = new()
+                        {
+                            Uuid = Guid.NewGuid(),
+                            Username = _currentItem.Value.Username,
+                            VoiceName = voiceInfo.ShortName!,
+                            Pitch = 0,
+                            Rate = 1
+                        };
+                        db.ViewerVoices.Add(voice);
+                        await db.SaveChangesAsync();
+                    }
+
+                    var text = _currentItem.Value.Text.Replace("\"", "&quot;")
+                                                      .Replace("&", "&amp;")
+                                                      .Replace("'", "&apos;")
+                                                      .Replace("<", "&lt;")
+                                                      .Replace(">", "&gt;");
+
+                    var tuples = text.Split(' ').Select(x => (word: x, pitch: voice.Pitch, rate: voice.Rate, style: string.Empty)).ToArray();
+                    for (int i = 0; i < tuples.Length; i++)
+                    {
+                        var (word, pitch, rate, style) = tuples[i];
+
+                        if (Uri.TryCreate(word, UriKind.Absolute, out var uri))
+                            tuples[i] = ("<break time=\"200ms\" />" + uri.Host + " " + (uri.AbsolutePath.StartsWith("/") ? uri.AbsolutePath.Substring(1) : uri.AbsolutePath) + "<break time=\"200ms\" />", pitch, 2, string.Empty);
+                        else if (voice.Pitch == 0 && voice.Rate == 1 && word.Any(char.IsLetter) && word.All(x => char.IsUpper(x) || !char.IsLetter(x)))
+                            tuples[i] = (word, pitch, rate, "shouting");
+                    }
+
+                    var lastPitch = voice.Pitch;
+                    var lastRate = voice.Rate;
+                    var lastStyle = string.Empty;
+                    var line = new List<string>();
+                    var elements = new List<string>();
+
+                    foreach (var (word, pitch, rate, style) in tuples)
+                    {
+                        if (pitch != lastPitch || rate != lastRate || style != lastStyle)
+                        {
+                            if (0 < line.Count)
+                            {
+                                if (lastStyle != string.Empty)
+                                    elements.Add($"""<mstts:express-as style="{lastStyle}">{string.Join(" ", line)}</mstts:express-as>""");
+                                else
+                                    elements.Add($"""<prosody volume="100" pitch="{(lastPitch < 0 ? "" : "+")}{lastPitch}Hz" rate="{lastRate.ToString().Replace(",", ".")}">{string.Join(" ", line)}</prosody>""");
+                            }
+
+                            lastPitch = pitch;
+                            lastRate = rate;
+                            lastStyle = style;
+                            line.Clear();
+                        }
+
+                        line.Add(word);
+                    }
+
+                    if (0 < line.Count)
+                    {
+                        if (lastStyle != string.Empty)
+                            elements.Add($"""<mstts:express-as style="{lastStyle}">{string.Join(" ", line)}</mstts:express-as>""");
+                        else
+                            elements.Add($"""<prosody volume="100" pitch="{(lastPitch < 0 ? "" : "+")}{lastPitch}Hz" rate="{lastRate.ToString().Replace(",", ".")}">{string.Join(" ", line)}</prosody>""");
+                    }
+
+                    string ssml = $"""
+                        <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US" xmlns:mstts="https://www.w3.org/2001/mstts">
                             <voice name="{voice.VoiceName}">
-                                <prosody volume="100" pitch="{(voice.Pitch < 0 ? "" : "+")}{voice.Pitch}Hz" rate="{voice.Rate.ToString().Replace(",", ".")}">
-                                    {_currentItem.Value.Text}
-                                </prosody>
+                                {string.Join("\n", elements)}
                             </voice>
                         </speak>
                         """;
-                    }
-                    else
-                    {
-                        ssml = $"""
-                        <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-                            <voice name="{_defaultVoice.ShortName}">{_currentItem.Value.Text}</voice>
-                        </speak>
-                        """;
-                    }
 
                     var content = new StringContent(ssml, Encoding.UTF8, "application/ssml+xml");
                     var response = await http.PostAsync(_conf["Azure:Speech:Endpoints:Tts"], content);
@@ -101,27 +146,38 @@ public class TtsService : BackgroundService
                         {
                             if (_currentItem is null)
                                 waveOut.Stop();
-                            await Task.Delay(200, cancellation);
+                            await Task.Delay(200, ct);
                         }
                     }
-                    else _logger.LogWarning($"Failed to fetch audio file for tts: {(int)response.StatusCode} {response.StatusCode}");
+                    else
+                    {
+                        var responseStr = await response.Content.ReadAsStringAsync();
+                        _logger.LogWarning($"Failed to fetch audio file for tts: {(int)response.StatusCode} {response.StatusCode}\n{responseStr}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e.Message);
                 }
                 finally
                 {
                     _currentItem = null;
                 }
             }
-            else await Task.Delay(1000);
+            else await Task.Delay(1000, ct);
         }
     }
 
     public void AddTextToRead(string messageId, string username, string text)
     {
-        if (text.StartsWith("!"))
+        if (!_isEnabled)
+            return;
+
+        if (text.StartsWith('!'))
             return;
 
         lock (_textToRead)
-            _textToRead.Add((messageId, username, text));
+            _textToRead.Add((messageId, username, text.Replace("<", "").Replace(">", "")));
     }
 
     public void DeleteById(string messageId)
@@ -161,7 +217,7 @@ public class TtsService : BackgroundService
             return _cachedVoices;
 
         if (string.IsNullOrWhiteSpace(_conf["Azure:Speech:Key1"]))
-            return Array.Empty<AzureTtsVoiceInfo>();
+            return [];
 
         using var http = new HttpClient();
         http.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _conf["Azure:Speech:Key1"]);
@@ -169,9 +225,22 @@ public class TtsService : BackgroundService
         if (response.StatusCode == System.Net.HttpStatusCode.OK)
         {
             var json = await response.Content.ReadAsStringAsync();
-            _cachedVoices = JsonConvert.DeserializeObject<AzureTtsVoiceInfo[]>(json);
+            _cachedVoices = JsonConvert.DeserializeObject<AzureTtsVoiceInfo[]>(json) ?? [];
             return _cachedVoices;
         }
-        else return Array.Empty<AzureTtsVoiceInfo>();
+        else return [];
+    }
+
+    public void Enable()
+    {
+        _isEnabled = true;
+        _logger.LogInformation("Tts enabled");
+    }
+
+    public void Disable()
+    {
+        _isEnabled = false;
+        _textToRead.Clear();
+        _logger.LogInformation("Tts disabled");
     }
 }

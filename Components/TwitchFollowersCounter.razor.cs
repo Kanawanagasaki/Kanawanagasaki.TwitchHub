@@ -10,16 +10,16 @@ using TwitchLib.PubSub;
 public partial class TwitchFollowersCounter : ComponentBase, IDisposable
 {
     [Inject]
-    public TwitchApiService TwApi { get; set; }
+    public required TwitchApiService TwApi { get; set; }
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public ILogger<TwitchFollowersCounter> Logger { get; set; }
+    public required ILogger<TwitchFollowersCounter> Logger { get; set; }
     [Inject]
-    public SQLiteContext Db { get; set; }
+    public required SQLiteContext Db { get; set; }
 
     [Parameter]
-    public string ChannelId { get; set; }
+    public string? ChannelId { get; set; }
     [Parameter]
     public int? Goal { get; set; }
 

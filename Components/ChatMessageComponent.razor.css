@@ -55,6 +55,13 @@
     word-break: break-word;
 }
 
+.parsed-message {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    word-break: break-word;
+}
+
 .emote-img {
     width: 24px;
     height: 24px;

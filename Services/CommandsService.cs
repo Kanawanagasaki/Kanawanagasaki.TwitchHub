@@ -1,5 +1,8 @@
 using Kanawanagasaki.TwitchHub.Data;
+using Kanawanagasaki.TwitchHub.Hubs;
+using Kanawanagasaki.TwitchHub.Models;
 using Kanawanagasaki.TwitchHub.Services.Commands;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using TwitchLib.Client.Models;
 
@@ -7,6 +10,7 @@ namespace Kanawanagasaki.TwitchHub.Services;
 
 public class CommandsService
 {
+    private IServiceScope _scope;
     private SQLiteContext _db;
     private ILogger<CommandsService> _logger;
 
@@ -16,20 +20,24 @@ public class CommandsService
     private Dictionary<string, string> _externalCommands = new();
     public IReadOnlyDictionary<string, string> ExternalCommands => _externalCommands;
 
-    public CommandsService(SQLiteContext db, TtsService tts, LlamaService llama, ILogger<CommandsService> logger)
+    public CommandsService(IServiceScopeFactory serviceScopeFactory, JsEnginesService jsEngines, TtsService tts, LlamaService llama, IHubContext<YoutubeHub> youtubeHub, ILogger<CommandsService> logger)
     {
-        _db = db;
+        _scope = serviceScopeFactory.CreateScope();
+        _db = _scope.ServiceProvider.GetRequiredService<SQLiteContext>();
         _logger = logger;
 
+        RegisterCommand(new PingCommand());
         RegisterCommand(new DiceCommand());
-        RegisterCommand(new CommandsCommand(this, db));
-        RegisterCommand(new HelpCommand(this, db));
+        RegisterCommand(new CommandsCommand(this, _db));
+        RegisterCommand(new HelpCommand(this, _db));
         RegisterCommand(new AddCommandCommand(this));
         RegisterCommand(new RemoveCommandCommand(this));
-        RegisterCommand(new JsCommand());
+        RegisterCommand(new JsCommand(jsEngines));
         RegisterCommand(new GetVoicesCommand(tts));
-        RegisterCommand(new SetVoiceCommand(db, tts));
+        RegisterCommand(new SetVoiceCommand(_db, tts));
         RegisterCommand(new LlamaResetCommand(llama));
+        RegisterCommand(new LlamaSetLoreCommand(_db));
+        RegisterCommand(new SongCommand(youtubeHub));
 
         _externalCommands.Add("drop", "Drop from the sky!");
     }
@@ -67,9 +75,9 @@ public class CommandsService
         _commands[command.Name] = command;
     }
 
-    public async Task<ProcessedChatMessage> ProcessMessage(ChatMessage message, TwitchChatMessagesService chat)
+    public async Task<ProcessedChatMessage> ProcessMessage(TwitchAuthModel botAuth, ChatMessage message, TwitchChatMessagesService chat)
     {
-        var processedMessage = new ProcessedChatMessage(message);
+        var processedMessage = new ProcessedChatMessage(botAuth, message);
 
         try
         {
@@ -86,7 +94,7 @@ public class CommandsService
                         processedMessage = _commands[commandName].Execute(processedMessage, chat);
                         processedMessage = await _commands[commandName].ExecuteAsync(processedMessage, chat);
                     }
-                    else processedMessage = processedMessage.WithReply($"@{message.DisplayName}, you not authozired to execute this command");
+                    else processedMessage = processedMessage.WithReply($"@{message.DisplayName}, you not authorized to execute this command");
                 }
                 else
                 {

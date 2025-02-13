@@ -9,8 +9,8 @@ public class ViewerVoice
     [Key]
     public Guid Uuid { get; set; }
 
-    public string Username { get; set; }
-    public string VoiceName { get; set; }
+    public required string Username { get; set; }
+    public required string VoiceName { get; set; }
     public int Pitch { get; set; }
     public double Rate { get; set; }
 }

@@ -11,7 +11,7 @@ using TwitchLib.Client.Models;
 public partial class Index : ComponentBase
 {
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public SQLiteContext Db { get; set; }
+    public required SQLiteContext Db { get; set; }
 }

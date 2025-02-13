@@ -8,20 +8,20 @@ using TwitchLib.PubSub;
 public partial class FollowerAlert : ComponentBase, IDisposable
 {
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public TwitchApiService TwApi { get; set; }
+    public required TwitchApiService TwApi { get; set; }
     [Inject]
-    public ILogger<FollowerAlert> Logger { get; set; }
+    public required ILogger<FollowerAlert> Logger { get; set; }
     [Inject]
-    public IJSRuntime Js { get; set; }
+    public required IJSRuntime Js { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string Channel { get; set; }
-    public string _cacheChannel = null;
+    public string? Channel { get; set; }
+    public string? _cacheChannel = null;
 
-    private TwitchPubSub _pubSub;
+    private TwitchPubSub? _pubSub;
 
     private List<TwitchGetUsersResponse> _followersQueue = new()
     {
@@ -33,7 +33,7 @@ public partial class FollowerAlert : ComponentBase, IDisposable
 
     private ElementReference _ref;
     private bool _isSimulating = false;
-    private TwitchGetUsersResponse _droppedUser = null;
+    private TwitchGetUsersResponse? _droppedUser = null;
     private DateTime _simulationStart;
     private int _width = 0;
     private int _height = 0;
@@ -48,7 +48,7 @@ public partial class FollowerAlert : ComponentBase, IDisposable
         {
             if (_followersQueue.Count > 0 && _isSimulationAllowed)
             {
-                await DoSimulation(_followersQueue[0]);
+                DoSimulation(_followersQueue[0]);
                 lock (_followersQueue)
                     _followersQueue.RemoveAt(0);
             }
@@ -95,8 +95,9 @@ public partial class FollowerAlert : ComponentBase, IDisposable
             Task.Run(async () =>
             {
                 var user = await TwApi.GetUser(model.AccessToken, ev.UserId);
-                lock (_followersQueue)
-                    _followersQueue.Add(user);
+                if (user is not null)
+                    lock (_followersQueue)
+                        _followersQueue.Add(user);
             });
         };
         // _pubSub.OnLog += (obj, ev) =>
@@ -119,7 +120,7 @@ public partial class FollowerAlert : ComponentBase, IDisposable
         }
     }
 
-    private async Task DoSimulation(TwitchGetUsersResponse user)
+    private void DoSimulation(TwitchGetUsersResponse user)
     {
         _points.Clear();
 

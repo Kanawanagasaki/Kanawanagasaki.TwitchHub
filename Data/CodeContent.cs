@@ -9,7 +9,7 @@ public class CodeContent
 {
     public (string code, string name, string slug) Language { get; private set; }
     public string Code { get; private set; }
-    public CSLine[] Lines { get; private set; }
+    public CSLine[]? Lines { get; private set; }
 
     public bool IsFormatted => Lines is not null;
 
@@ -24,30 +24,35 @@ public class CodeContent
     public async Task Format(IJSRuntime js)
     {
         Lines = await Prettier(js);
-        if (Lines is not null) return;
+        if (Lines is not null)
+            return;
 
         Lines = await FormatterOrg();
-        if (Lines is not null) return;
+        if (Lines is not null)
+            return;
 
         Lines = DefaultFormatter();
     }
 
-    private async Task<CSLine[]> Prettier(IJSRuntime js)
+    private async Task<CSLine[]?> Prettier(IJSRuntime js)
     {
         string[] availableLanguages = new[] { "typescript", "css", "json", "html" };
-        if (!availableLanguages.Contains(Language.slug)) return null;
+        if (!availableLanguages.Contains(Language.slug))
+            return null;
 
         var result = await js.InvokeAsync<string>("prettierFormat", Language.slug, Code);
-        if (string.IsNullOrWhiteSpace(result)) return null;
+        if (string.IsNullOrWhiteSpace(result))
+            return null;
 
         var lines = result.Trim().Split("\n");
         return lines.Select(l => new CSLine(l.Trim()) { Indent = l.TakeWhile(Char.IsWhiteSpace).Count() }).ToArray();
     }
 
-    private async Task<CSLine[]> FormatterOrg()
+    private async Task<CSLine[]?> FormatterOrg()
     {
-        string[] availableLanguages = new[] { "cpp", "java", "csharp", "objective-c", "javascript", "protobuf" };
-        if (!availableLanguages.Contains(Language.slug)) return null;
+        string[] availableLanguages = ["cpp", "java", "csharp", "objective-c", "javascript", "protobuf"];
+        if (!availableLanguages.Contains(Language.slug))
+            return null;
 
         Dictionary<string, string> langToStyle = new()
         {
@@ -75,7 +80,7 @@ public class CodeContent
         {
             var json = await response.Content.ReadAsStringAsync();
             var result = JsonConvert.DeserializeObject<JObject>(json);
-            var parsedCode = result.Value<string>("codeDst");
+            var parsedCode = result?.Value<string>("codeDst") ?? string.Empty;
             var lines = parsedCode.Split("\n");
             return lines.Select(l => new CSLine(l.Trim()) { Indent = l.TakeWhile(Char.IsWhiteSpace).Count() }).ToArray();
         }

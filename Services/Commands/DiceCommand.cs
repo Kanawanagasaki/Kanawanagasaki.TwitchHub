@@ -1,12 +1,12 @@
-using Kanawanagasaki.TwitchHub.Data;
-
 namespace Kanawanagasaki.TwitchHub.Services.Commands;
+
+using Kanawanagasaki.TwitchHub.Data;
 
 public class DiceCommand : ACommand
 {
     public override string Name => "dice";
 
-    public override string Description => "Throw a dice and get a number! Use !dice <min> <max>";
+    public override string Description => "Roll a dice and get a number! Use !dice <min> <max>";
 
     public override ProcessedChatMessage Execute(ProcessedChatMessage chatMessage, TwitchChatMessagesService chat)
     {
@@ -30,6 +30,6 @@ public class DiceCommand : ACommand
         return chatMessage
             .WithoutOriginalMessage()
             .WithCustomContent("🎲 " + result)
-            .WithReply($"@{chatMessage.Original.DisplayName} throw {(max - min + 1)} sided dice and got {result}");
+            .WithReply($"@{chatMessage.Original.DisplayName} rolled a {max - min + 1} dice and got {result}");
     }
 }

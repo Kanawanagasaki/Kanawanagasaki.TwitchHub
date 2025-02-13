@@ -6,14 +6,14 @@ using Newtonsoft.Json;
 
 public class JsEngine : IDisposable
 {
-    public string LastCodeExecuted { get; private set; }
+    public string? LastCodeExecuted { get; private set; }
 
     public StreamApi StreamApi { get; private set; }
 
     private V8ScriptEngine _engine;
-    private List<string> _logs = new();
+    private List<string> _logs = [];
 
-    private Dictionary<string, object> _registeredHostObjects = new();
+    private readonly Dictionary<string, object> _registeredHostObjects = [];
 
     public JsEngine(SQLiteContext db, string channel)
     {
@@ -25,9 +25,9 @@ public class JsEngine : IDisposable
         {
             log = new Action<object>((obj) =>
             {
-                if (_logs.Count > 100) return;
-                
-                _logs.Add(obj.ToString());
+                if (100 < _logs.Count) return;
+
+                _logs.Add(obj?.ToString() ?? "NULL");
             })
         });
 
@@ -37,9 +37,9 @@ public class JsEngine : IDisposable
 
     public void RegisterHostObjects(string name, object obj)
     {
-        lock(_registeredHostObjects)
+        lock (_registeredHostObjects)
         {
-            if(_registeredHostObjects.ContainsKey(name))
+            if (_registeredHostObjects.ContainsKey(name))
                 _engine.ExecuteCommand($"delete {name};");
             _engine.AddHostObject(name, obj);
             _registeredHostObjects[name] = obj;
@@ -50,28 +50,29 @@ public class JsEngine : IDisposable
     {
         bool finished = false;
 
-        var mainTask = Task.Run(()=>
+        var mainTask = Task.Run(() =>
         {
-            if(fromCommand)
+            if (fromCommand)
                 LastCodeExecuted = code;
             var result = _engine.ExecuteCommand(code);
             finished = true;
             return result;
         });
 
-        var delayTask = Task.Delay(250);
+        var delayTask = Task.Delay(1000);
 
         await Task.WhenAny(mainTask, delayTask);
 
-        if(!finished)
+        if (!finished)
             _engine.Interrupt();
 
         return await mainTask;
     }
 
-    public string FlushLogs()
+    public string? FlushLogs()
     {
-        if (_logs.Count == 0) return null;
+        if (_logs.Count == 0)
+            return null;
 
         string logs = string.Join(" ", _logs);
         if (logs.Length > 500)
@@ -85,8 +86,6 @@ public class JsEngine : IDisposable
     public void Dispose()
     {
         _engine.Dispose();
-        _engine = null;
         _logs.Clear();
-        _logs = null;
     }
 }

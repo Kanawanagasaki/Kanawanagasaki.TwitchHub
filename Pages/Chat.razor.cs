@@ -8,20 +8,20 @@ using Microsoft.EntityFrameworkCore;
 public partial class Chat : ComponentBase
 {
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public NavigationManager NavMgr { get; set; }
+    public required NavigationManager NavMgr { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string Channel { get; set; }
+    public string? Channel { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string Bot { get; set; }
-    private string _bot;
+    public string? Bot { get; set; }
+    private string? _bot;
 
-    private TwitchAuthModel _model { get; set; }
+    private TwitchAuthModel? _model { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {

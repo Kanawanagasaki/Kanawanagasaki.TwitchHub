@@ -6,5 +6,5 @@ using Microsoft.AspNetCore.Components;
 public partial class HtmlPreviewComponent : ComponentBase
 {
     [Parameter]
-    public HtmlPreviewCustomContent Content { get; set; }
+    public HtmlPreviewCustomContent? Content { get; set; }
 }

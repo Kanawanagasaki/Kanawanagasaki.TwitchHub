@@ -15,31 +15,33 @@ public class SetVoiceCommand : ACommand
 
     public override async Task<ProcessedChatMessage> ExecuteAsync(ProcessedChatMessage message, TwitchChatMessagesService chat)
     {
-        if(message.CommandArgs.Length == 0)
+        if (message.CommandArgs.Length == 0)
             return message.WithReply("Please, provide a name for the voice. Use !getvoices command to see options.");
 
         var voices = await _tts.GetVoices();
-        voices = voices.Where(v => v.ShortName.Contains(message.CommandArgs[0])).ToArray();
-        if(voices.Length == 0)
+        voices = voices.Where(v => v.ShortName is not null && TransformString(v.ShortName).Contains(TransformString(message.CommandArgs[0]))).ToArray();
+        if (voices.Length == 0)
             return message.WithReply("Voice not found");
-        else if(voices.Length > 1)
+        else if (voices[0].ShortName is null)
+            return message.WithReply("Internal error");
+        else if (1 < voices.Length)
             return message.WithReply("Please, specify voice: " + string.Join(", ", voices.Select(v => v.ShortName)));
-        
+
         int pitch = 0;
         double rate = 1;
-        if(message.CommandArgs.Length > 1) int.TryParse(message.CommandArgs[1], out pitch);
-        if(message.CommandArgs.Length > 2) double.TryParse(message.CommandArgs[2].Replace(",", "."), out rate);
+        if (1 < message.CommandArgs.Length) int.TryParse(message.CommandArgs[1], out pitch);
+        if (2 < message.CommandArgs.Length) double.TryParse(message.CommandArgs[2].Replace(",", "."), out rate);
 
         pitch = Math.Clamp(pitch, -100, 100);
         rate = Math.Clamp(rate, 0.1, 2);
 
         var model = await _db.ViewerVoices.FirstOrDefaultAsync(v => v.Username == message.Original.Username);
-        if(model is null)
+        if (model is null)
         {
             model = new()
             {
                 Username = message.Original.Username,
-                VoiceName = voices[0].ShortName,
+                VoiceName = voices[0].ShortName!,
                 Pitch = pitch,
                 Rate = rate
             };
@@ -47,7 +49,7 @@ public class SetVoiceCommand : ACommand
         }
         else
         {
-            model.VoiceName = voices[0].ShortName;
+            model.VoiceName = voices[0].ShortName!;
             model.Pitch = pitch;
             model.Rate = rate;
         }
@@ -56,4 +58,7 @@ public class SetVoiceCommand : ACommand
 
         return message.WithReply("Voice successfully updated.");
     }
+    
+    private string TransformString(string str)
+        => new string(str.Where(x => char.IsLetterOrDigit(x) || x == ' ').ToArray()).ToLower();
 }

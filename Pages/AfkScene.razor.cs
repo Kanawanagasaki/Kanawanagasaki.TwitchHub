@@ -13,17 +13,17 @@ using TwitchLib.Client;
 public partial class AfkScene : ComponentBase, IAsyncDisposable
 {
     [Inject]
-    public JsEnginesService JsEngines { get; set; }
+    public required JsEnginesService JsEngines { get; set; }
     [Inject]
-    public IJSRuntime Js { get; set; }
+    public required IJSRuntime Js { get; set; }
     [Inject]
-    public TwitchChatService Chat { get; set; }
+    public required TwitchChatService Chat { get; set; }
     [Inject]
-    public SQLiteContext Db { get; set; }
+    public required SQLiteContext Db { get; set; }
     [Inject]
-    public TwitchAuthService TwAuth { get; set; }
+    public required TwitchAuthService TwAuth { get; set; }
     [Inject]
-    public ILogger<AfkScene> Logger { get; set; }
+    public required ILogger<AfkScene> Logger { get; set; }
 
     [Parameter]
     [SupplyParameterFromQuery]
@@ -31,29 +31,31 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string Channel { get; set; }
-    private string _cachedChannel = null;
+    public string? Channel { get; set; }
+    private string? _cachedChannel = null;
 
     [Parameter]
     [SupplyParameterFromQuery]
-    public string Bot { get; set; }
-    private string _cachedBot = null;
+    public string? Bot { get; set; }
+    private string? _cachedBot = null;
 
-    private AfkSceneData _afkScene;
+    private AfkSceneData? _afkScene;
     private string _afkSceneJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
     private string _symbolsJsName = "_$" + Guid.NewGuid().ToString().Replace("-", "");
 
-    private IJSObjectReference _loopObj;
+    private IJSObjectReference? _loopObj;
     private DateTime _startDateTime;
 
-    private JsEngine _engine;
-    private TwitchClient _chatClient;
-    private TwitchAuthModel _twAuth;
+    private JsEngine? _engine;
+    private TwitchClient? _chatClient;
+    private TwitchAuthModel? _twAuth;
 
     private int _framesToSkip = 0;
-    private int _skippedFramesCounter = 0;
+    private int _framesToSkipCount = 0;
 
     private bool _isInitialized = false;
+
+    private int _jsFaultsCount = 0;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -99,6 +101,9 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
 
         try
         {
+            if (_engine is null)
+                return;
+
             _engine.RegisterHostObjects(_afkSceneJsName, _afkScene);
             _engine.RegisterHostObjects(_symbolsJsName, _afkScene.symbols);
 
@@ -125,13 +130,16 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
     [JSInvokable("onTick")]
     public async Task OnTick()
     {
-        if(!_isInitialized) return;
+        if (!_isInitialized) return;
 
-        if (_skippedFramesCounter > 0)
+        if (0 < _framesToSkipCount)
         {
-            _skippedFramesCounter--;
+            _framesToSkipCount--;
             return;
         }
+
+        if (_engine is null)
+            return;
 
         var tickCode = _engine.StreamApi.afk.tickCode;
         var symbolTickCode = _engine.StreamApi.afk.symbolTickCode;
@@ -153,15 +161,22 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
             var logs = _engine.FlushLogs();
             if (!string.IsNullOrWhiteSpace(logs))
             {
-                if (tickCode == _engine.StreamApi.afk.tickCode && symbolTickCode == _engine.StreamApi.afk.symbolTickCode)
-                    _engine.StreamApi.afk.resetToDefault();
-                else
+                _jsFaultsCount++;
+
+                if (3 < _jsFaultsCount)
                 {
-                    _engine.StreamApi.afk.SetOnTick(tickCode);
-                    _engine.StreamApi.afk.SetOnSymbolTick(symbolTickCode);
+                    if (tickCode == _engine.StreamApi.afk.tickCode && symbolTickCode == _engine.StreamApi.afk.symbolTickCode)
+                        _engine.StreamApi.afk.resetToDefault();
+                    else
+                    {
+                        _engine.StreamApi.afk.SetOnTick(tickCode);
+                        _engine.StreamApi.afk.SetOnSymbolTick(symbolTickCode);
+                    }
+                    _chatClient?.SendMessage(Channel, logs);
                 }
-                _chatClient.SendMessage(Channel, logs);
             }
+            else
+                _jsFaultsCount = 0;
         }
         catch (Exception e)
         {
@@ -172,12 +187,14 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
 
     private async Task ProcessException(Exception e, bool flag = true)
     {
+        _jsFaultsCount++;
         if (e.Message != "ReferenceError: _afkScreenJsName is not defined" && e.Message != "The V8 runtime cannot perform the requested operation because a script exception is pending")
         {
             if (e is ScriptEngineException)
-                _chatClient.SendMessage(Channel, e.Message);
+                _chatClient?.SendMessage(Channel, e.Message);
 
-            _engine.StreamApi.afk.resetToDefault();
+            if (3 < _jsFaultsCount)
+                _engine?.StreamApi.afk.resetToDefault();
             if (flag)
                 await Init(false);
             _startDateTime = DateTime.UtcNow;
@@ -185,7 +202,7 @@ public partial class AfkScene : ComponentBase, IAsyncDisposable
         else
         {
             _framesToSkip++;
-            _skippedFramesCounter = _framesToSkip;
+            _framesToSkipCount = _framesToSkip;
             Console.WriteLine($"Skipping {_framesToSkip} frames");
         }
 

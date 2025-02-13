@@ -9,6 +9,6 @@ public class TextCommandModel
     [Key]
     public Guid Uuid { get; set; }
 
-    public string Name { get; set; }
-    public string Text { get; set; }
+    public required string Name { get; set; }
+    public required string Text { get; set; }
 }

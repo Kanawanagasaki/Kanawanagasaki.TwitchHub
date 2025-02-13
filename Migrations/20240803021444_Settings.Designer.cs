@@ -3,6 +3,7 @@ using System;
 using Kanawanagasaki.TwitchHub;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Kanawanagasaki.TwitchHub.Migrations
 {
     [DbContext(typeof(SQLiteContext))]
-    partial class SQLiteContextModelSnapshot : ModelSnapshot
+    [Migration("20240803021444_Settings")]
+    partial class Settings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.7");
@@ -24,19 +27,15 @@ namespace Kanawanagasaki.TwitchHub.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Channel")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("InitCode")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SymbolTickCode")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TickCode")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Uuid");
@@ -51,11 +50,9 @@ namespace Kanawanagasaki.TwitchHub.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Key")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Value")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Uuid");
@@ -72,11 +69,9 @@ namespace Kanawanagasaki.TwitchHub.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Text")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Uuid");
@@ -91,79 +86,23 @@ namespace Kanawanagasaki.TwitchHub.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("AccessToken")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsValid")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("RefreshToken")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("UserId")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Username")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Uuid");
 
                     b.ToTable("twitch_auth");
-                });
-
-            modelBuilder.Entity("Kanawanagasaki.TwitchHub.Models.TwitchCustomRewardModel", b =>
-                {
-                    b.Property<Guid>("Uuid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("AuthUuid")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BackgroundColor")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("BotAuthUuid")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Cost")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Extra")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsCreated")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsUserInputRequired")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Prompt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RewardType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TwitchId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Uuid");
-
-                    b.HasIndex("AuthUuid");
-
-                    b.HasIndex("TwitchId");
-
-                    b.ToTable("twitch_custom_reward");
                 });
 
             modelBuilder.Entity("Kanawanagasaki.TwitchHub.Models.ViewerVoice", b =>
@@ -179,11 +118,9 @@ namespace Kanawanagasaki.TwitchHub.Migrations
                         .HasColumnType("REAL");
 
                     b.Property<string>("Username")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("VoiceName")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Uuid");

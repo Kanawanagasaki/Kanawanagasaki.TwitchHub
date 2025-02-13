@@ -6,10 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 public class SQLiteContext : DbContext
 {
-    public DbSet<TwitchAuthModel> TwitchAuth { get; set; }
-    public DbSet<TextCommandModel> TextCommands { get; set; }
-    public DbSet<JsAfkCodeModel> JsAfkCodes { get; set; }
-    public DbSet<ViewerVoice> ViewerVoices { get; set; }
+    public required DbSet<TwitchAuthModel> TwitchAuth { get; set; }
+    public required DbSet<TwitchCustomRewardModel> TwitchCustomRewards { get; set; }
+    public required DbSet<TextCommandModel> TextCommands { get; set; }
+    public required DbSet<JsAfkCodeModel> JsAfkCodes { get; set; }
+    public required DbSet<ViewerVoice> ViewerVoices { get; set; }
+    public required DbSet<SettingModel> Settings { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
